@@ -1,66 +1,83 @@
-WITH "BaseBalance" AS (
+WITH "Payments" AS (
   SELECT
-    CASE
-      WHEN (ep."userId" < e."paidBy") THEN ep."userId"
-      ELSE e."paidBy"
-    END AS "user_id_A",
-    CASE
-      WHEN (ep."userId" < e."paidBy") THEN e."paidBy"
-      ELSE ep."userId"
-    END AS "user_id_B",
+    ep."expenseId",
+    ep."userId",
+    sum(ep."amount") AS "paid"
+  FROM
+    "ExpensePayment" ep
+  GROUP BY
+    ep."expenseId",
+    ep."userId"
+),
+"Shares" AS (
+  SELECT
+    e."id" AS "expenseId",
+    e."amount" AS "total",
     e."groupId",
     e.currency,
-    sum(
-      (
-        ep.amount * CASE
-          WHEN (ep."userId" < e."paidBy") THEN 1
-          ELSE '-1' :: integer
-        END
-      )
-    ) AS net_amount,
-    min(e."createdAt") AS "createdAt",
-    max(e."updatedAt") AS "updatedAt"
+    e."createdAt",
+    e."updatedAt",
+    ep."userId",
+    coalesce(p."paid", 0) AS "paid",
+    (coalesce(p."paid", 0) - ep."amount") AS "share"
   FROM
-    (
-      "ExpenseParticipant" ep
-      JOIN "Expense" e ON ((ep."expenseId" = e.id))
+    "Expense" e
+    JOIN "ExpenseParticipant" ep ON ((ep."expenseId" = e.id))
+    LEFT JOIN "Payments" p ON (
+      (p."expenseId" = e.id)
+      AND (p."userId" = ep."userId")
     )
   WHERE
     (
-      (ep."userId" <> e."paidBy")
-      AND (e."deletedAt" IS NULL)
+      (e."deletedAt" IS NULL)
+      AND (e."mutedAt" IS NULL)
+      AND (e."amount" <> 0)
     )
-  GROUP BY
-    CASE
-      WHEN (ep."userId" < e."paidBy") THEN ep."userId"
-      ELSE e."paidBy"
-    END,
-    CASE
-      WHEN (ep."userId" < e."paidBy") THEN e."paidBy"
-      ELSE ep."userId"
-    END,
-    e."groupId",
-    e.currency
+),
+"Pairs" AS (
+  SELECT
+    a."expenseId",
+    a."groupId",
+    a.currency,
+    a."createdAt",
+    a."updatedAt",
+    a."userId" AS "user_id_A",
+    b."userId" AS "user_id_B",
+    round(
+      (
+        ((a."paid" * b."share") - (b."paid" * a."share"))::numeric / a."total"::numeric
+      )
+    ) AS "net_amount"
+  FROM
+    "Shares" a
+    JOIN "Shares" b ON (
+      (b."expenseId" = a."expenseId")
+      AND (b."userId" > a."userId")
+    )
 )
 SELECT
-  "BaseBalance"."user_id_A" AS "userId",
-  "BaseBalance"."user_id_B" AS "friendId",
-  "BaseBalance"."groupId",
-  "BaseBalance".currency,
-  "BaseBalance".net_amount AS amount,
-  "BaseBalance"."createdAt",
-  "BaseBalance"."updatedAt"
+  "Pairs"."user_id_A" AS "userId",
+  "Pairs"."user_id_B" AS "friendId",
+  "Pairs"."groupId",
+  "Pairs".currency,
+  "Pairs"."net_amount" AS amount,
+  "Pairs"."createdAt",
+  "Pairs"."updatedAt"
 FROM
-  "BaseBalance"
+  "Pairs"
+WHERE
+  ("Pairs"."net_amount" <> 0)
 UNION
 ALL
 SELECT
-  "BaseBalance"."user_id_B" AS "userId",
-  "BaseBalance"."user_id_A" AS "friendId",
-  "BaseBalance"."groupId",
-  "BaseBalance".currency,
-  (- "BaseBalance".net_amount) AS amount,
-  "BaseBalance"."createdAt",
-  "BaseBalance"."updatedAt"
+  "Pairs"."user_id_B" AS "userId",
+  "Pairs"."user_id_A" AS "friendId",
+  "Pairs"."groupId",
+  "Pairs".currency,
+  (- "Pairs"."net_amount") AS amount,
+  "Pairs"."createdAt",
+  "Pairs"."updatedAt"
 FROM
-  "BaseBalance";
+  "Pairs"
+WHERE
+  ("Pairs"."net_amount" <> 0)

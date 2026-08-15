@@ -23,6 +23,9 @@ export type CreateExpense = Omit<
   | 'transactionId'
   | 'conversionToId'
   | 'recurrenceId'
+  | 'note'
+  | 'mutedAt'
+  | 'mutedBy'
 > & {
   expenseDate?: Date;
   fileKey?: string;

@@ -59,12 +59,15 @@ model User {
   updatedExpenses      Expense[]            @relation("UpdatedByUser")
   expenseNotes         ExpenseNote[]
   expenseParticipants  ExpenseParticipant[]
+  expensePayments      ExpensePayment[]
+  tags                 Tag[]
   groups               Group[]
   associatedGroups     GroupUser[]
   friendDefaultSplitsA FriendDefaultSplit[] @relation("FriendDefaultSplitUserA")
   friendDefaultSplitsB FriendDefaultSplit[] @relation("FriendDefaultSplitUserB")
   sessions             Session[]
   hiddenFriendIds      Int[]                @default([])
+  mutedExpenses        Expense[]            @relation("MutedByUser")
 
   @@schema("public")
 }
@@ -184,10 +187,14 @@ model Expense {
   updatedBy           Int?
   transactionId       String?
   recurrenceId        Int?
+  note                String?
+  mutedAt             DateTime?
+  mutedBy             Int?
   id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   conversionToId      String?              @unique @db.Uuid
   addedByUser         User                 @relation("AddedByUser", fields: [addedBy], references: [id], onDelete: Cascade)
   deletedByUser       User?                @relation("DeletedByUser", fields: [deletedBy], references: [id], onDelete: Cascade)
+  mutedByUser         User?                @relation("MutedByUser", fields: [mutedBy], references: [id], onDelete: Cascade)
   group               Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
   conversionTo        Expense?             @relation("CurrencyConversion", fields: [conversionToId], references: [id], onDelete: Cascade)
   conversionFrom      Expense?             @relation("CurrencyConversion")
@@ -196,9 +203,12 @@ model Expense {
   updatedByUser       User?                @relation("UpdatedByUser", fields: [updatedBy], references: [id])
   expenseNotes        ExpenseNote[]
   expenseParticipants ExpenseParticipant[]
+  expensePayments     ExpensePayment[]
+  tags                ExpenseTag[]
 
   @@index([groupId])
   @@index([paidBy])
+  @@index([deletedAt])
   @@schema("public")
 }
 
@@ -210,6 +220,44 @@ model ExpenseParticipant {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([expenseId, userId])
+  @@schema("public")
+}
+
+/// A payment made towards an expense. Sum of payments per expense must equal the expense amount.
+/// Backward compatible: expenses created before this model get a single payment row equal to (paidBy, amount).
+model ExpensePayment {
+  id        String  @id @default(cuid())
+  amount    BigInt
+  expenseId String  @db.Uuid
+  userId    Int
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+  @@schema("public")
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  name        String
+  color       String
+  userId      Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenseTags ExpenseTag[]
+
+  @@unique([userId, name])
+  @@schema("public")
+}
+
+model ExpenseTag {
+  expenseId String  @db.Uuid
+  tagId     String
+  expense   Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([expenseId, tagId])
   @@schema("public")
 }
 

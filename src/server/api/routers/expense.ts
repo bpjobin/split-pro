@@ -154,6 +154,18 @@ export const expenseRouter = createTRPCRouter({
           }
         }
 
+        if (input.expenseId && input.groupId !== null) {
+          const currentGroup = await db.expense.findUnique({
+            where: { id: input.expenseId },
+            select: { groupId: true },
+          });
+          if (currentGroup && currentGroup.groupId !== input.groupId) {
+            await validateGroupMembership(input.groupId, [
+              ...new Set([input.paidBy, ...input.participants.map((p) => p.userId)]),
+            ]);
+          }
+        }
+
         try {
           const expense = input.expenseId
             ? await editExpense(input, ctx.session.user.id)
@@ -625,6 +637,27 @@ export const expenseRouter = createTRPCRouter({
       return { rates };
     }),
 });
+
+const validateGroupMembership = async (groupId: number, userIds: number[]): Promise<void> => {
+  const group = await db.group.findUnique({
+    where: { id: groupId },
+    include: { groupUsers: { select: { userId: true } } },
+  });
+
+  if (!group) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'Group not found' });
+  }
+
+  const memberIds = new Set(group.groupUsers.map((gu) => gu.userId));
+  const nonMembers = userIds.filter((id) => !memberIds.has(id));
+
+  if (0 < nonMembers.length) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Some participants are not members of the group',
+    });
+  }
+};
 
 const validateEditExpensePermission = async (expenseId: string, userId: number): Promise<void> => {
   const [expenseParticipant, addedBy] = await Promise.all([
