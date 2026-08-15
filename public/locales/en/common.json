@@ -95,7 +95,9 @@
     "settle_up": "Settle up",
     "submit": "Submit",
     "reconnect": "Reconnect",
-    "connect": "Connect"
+    "connect": "Connect",
+    "save_and_add_another": "Save & add another",
+    "bulk_add": "Bulk add"
   },
   "actors": {
     "all": "All",
@@ -249,6 +251,14 @@
       "description": "You have selected multiple transactions. Pick whether you want them added all together with the current split settings or adjust the settings one by one.",
       "add_all": "Add all",
       "add_one_by_one": "Add one by one"
+    },
+    "bulk_add": {
+      "title": "Bulk add expenses",
+      "description": "Add multiple expenses at once. Each row is created with the current payer and split settings.",
+      "add_row": "Add row",
+      "row_placeholder": "Enter description",
+      "submit_all": "Add all expenses",
+      "add_row_required": "Add at least one expense with a description and amount"
     },
     "title": "Add expense",
     "title_mobile": "Add",

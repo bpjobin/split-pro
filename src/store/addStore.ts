@@ -56,6 +56,7 @@ export interface AddExpenseState {
     setFileUploading: (isFileUploading: boolean) => void;
     setFileKey: (fileKey: string) => void;
     resetState: () => void;
+    resetForAnother: () => void;
     setSplitScreenOpen: (splitScreenOpen: boolean) => void;
     setExpenseDate: (expenseDate: Date | undefined) => void;
     setTransactionId: (transactionId?: string) => void;
@@ -243,6 +244,24 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         cronExpression: '',
         isFileUploading: false,
         paidBy: s.currentUser,
+      }));
+    },
+    resetForAnother: () => {
+      set((s) => ({
+        amount: 0n,
+        amountStr: '',
+        description: '',
+        fileKey: '',
+        isNegative: false,
+        canSplitScreenClosed: true,
+        splitScreenOpen: false,
+        expenseDate: new Date(),
+        transactionId: undefined,
+        multipleTransactions: [],
+        isTransactionLoading: false,
+        cronExpression: '',
+        isFileUploading: false,
+        participants: s.participants.map((p) => ({ ...p, amount: undefined })),
       }));
     },
     setSplitScreenOpen: (splitScreenOpen) => set({ splitScreenOpen }),

@@ -1,4 +1,4 @@
-import { HeartHandshakeIcon, Landmark, RefreshCcwDot, X } from 'lucide-react';
+import { HeartHandshakeIcon, Landmark, ListPlus, RefreshCcwDot, X } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -15,6 +15,7 @@ import { cn } from '~/lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import AddBankTransactions from './AddBankTransactions';
+import BulkAddExpense from './BulkAddExpense';
 import { CategoryPicker } from './CategoryPicker';
 import { CurrencyPicker } from './CurrencyPicker';
 import { DateSelector } from './DateSelector';
@@ -65,6 +66,7 @@ export const AddOrEditExpensePage: React.FC<{
     setAmount,
     setAmountStr,
     resetState,
+    resetForAnother,
     setExpenseDate,
     setMultipleTransactions,
     setIsTransactionLoading,
@@ -159,7 +161,7 @@ export const AddOrEditExpensePage: React.FC<{
                 } else if (groupId) {
                   navPromise = () => router.push(`/groups/${groupId as string}/expenses/${id}`);
                 } else {
-                  navPromise = () => router.push(`/expenses/${id}?keepAdding=1`);
+                  navPromise = () => router.push(`/expenses/${id}?n=1`);
                 }
 
                 if (expenseId) {
@@ -209,6 +211,66 @@ export const AddOrEditExpensePage: React.FC<{
     multipleTransactions,
     setSingleTransaction,
     update,
+  ]);
+
+  const addExpenseAndAnother = useCallback(async () => {
+    if (!paidBy) {
+      return;
+    }
+
+    setMultipleTransactions([]);
+    setIsTransactionLoading(false);
+
+    const sign = isNegative ? -1n : 1n;
+
+    try {
+      await addExpenseMutation.mutateAsync([
+        {
+          name: description,
+          currency,
+          amount: amount * sign,
+          groupId: group?.id ?? null,
+          splitType,
+          participants: participants.map((p) => ({
+            userId: p.id,
+            amount: (p.amount ?? 0n) * sign,
+          })),
+          paidBy: paidBy.id,
+          category,
+          fileKey,
+          expenseDate,
+          cronExpression: cronExpression ? cronToBackend(cronExpression) : undefined,
+        },
+      ]);
+      resetForAnother();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast.success(t('expense_details.add_expense_details.add_new_expense'));
+    } catch (error) {
+      console.error(error);
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error('An unexpected error occurred while submitting the expense.');
+      }
+    }
+  }, [
+    description,
+    currency,
+    isNegative,
+    amount,
+    participants,
+    category,
+    expenseDate,
+    group,
+    paidBy,
+    splitType,
+    fileKey,
+    cronExpression,
+    addExpenseMutation,
+    resetForAnother,
+    setMultipleTransactions,
+    setIsTransactionLoading,
+    t,
   ]);
 
   const handleDescriptionChange = useCallback(
@@ -362,8 +424,24 @@ export const AddOrEditExpensePage: React.FC<{
                     selected={expenseDate}
                     onSelect={setExpenseDate}
                   />
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
                     <UploadFile />
+                    {!expenseId && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={
+                          addExpenseMutation.isPending ||
+                          !amount ||
+                          '' === description ||
+                          isFileUploading ||
+                          !isExpenseSettled
+                        }
+                        onClick={addExpenseAndAnother}
+                      >
+                        {t('actions.save_and_add_another')}
+                      </Button>
+                    )}
                     <Button
                       className="min-w-[100px]"
                       size="sm"
@@ -401,6 +479,17 @@ export const AddOrEditExpensePage: React.FC<{
             )}
             <SponsorUs />
             <div className="flex gap-2">
+              {!expenseId && (
+                <BulkAddExpense>
+                  <Button
+                    variant="ghost"
+                    className="hover:text-foreground/80 items-center justify-between px-2"
+                    title={t('actions.bulk_add')}
+                  >
+                    <ListPlus className="h-6 w-6" />
+                  </Button>
+                </BulkAddExpense>
+              )}
               <AddBankTransactions bankConnectionEnabled={bankConnectionEnabled}>
                 <Button
                   variant="ghost"

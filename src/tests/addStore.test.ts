@@ -1,4 +1,4 @@
-import { SplitType, type User } from '@prisma/client';
+import { type Group, SplitType, type User } from '@prisma/client';
 
 import {
   type AddExpenseState,
@@ -1185,5 +1185,62 @@ describe('useAddExpenseStore sign preservation on edit (#658)', () => {
     expect(state.amountStr).toBe('200.01');
     expect(state.isNegative).toBe(false);
     expect(state.amount).toBe(20001n);
+  });
+});
+
+describe('resetForAnother', () => {
+  const { actions } = useAddExpenseStore.getState();
+
+  beforeEach(() => {
+    actions.resetState();
+  });
+
+  it('clears amount fields while preserving group, participants, payer and split type', () => {
+    const participant: User = {
+      id: 42,
+      name: 'Friend',
+      email: 'friend@example.com',
+      emailVerified: null,
+      image: null,
+      currency: 'USD',
+      defaultCurrency: null,
+      preferredLanguage: '',
+      bankingId: null,
+      obapiProviderId: null,
+      hiddenFriendIds: [],
+    };
+    actions.addOrUpdateParticipant(participant);
+    actions.setGroup({
+      id: 7,
+      publicId: 'g7',
+      name: 'Group 7',
+      image: null,
+      userId: 1,
+      defaultCurrency: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      splitwiseGroupId: null,
+      simplifyDebts: false,
+      archivedAt: null,
+    } satisfies Group);
+    actions.setPaidBy(participant);
+    actions.setSplitType(SplitType.EXACT);
+    actions.setDescription('Dinner');
+    actions.setAmount(10000n);
+    actions.setAmountStr('100.00');
+    actions.setCategory('Food');
+
+    actions.resetForAnother();
+
+    const state = useAddExpenseStore.getState();
+    expect(state.amount).toBe(0n);
+    expect(state.amountStr).toBe('');
+    expect(state.description).toBe('');
+    expect(state.group?.id).toBe(7);
+    expect(state.paidBy?.id).toBe(42);
+    expect(state.splitType).toBe(SplitType.EXACT);
+    expect(state.category).toBe('Food');
+    expect(state.participants.map((p) => p.id)).toContain(42);
+    expect(state.participants.every((p) => p.amount === undefined)).toBe(true);
   });
 });
