@@ -22,6 +22,7 @@ export interface AddExpenseState {
   participants: Participant[];
   splitShares: SplitShares;
   description: string;
+  note: string;
   currency: CurrencyCode;
   category: string;
   nameOrEmail: string;
@@ -53,6 +54,7 @@ export interface AddExpenseState {
     setPaidBy: (user: User) => void;
     setCurrentUser: (user: User) => void;
     setDescription: (description: string) => void;
+    setNote: (note: string) => void;
     setFileUploading: (isFileUploading: boolean) => void;
     setFileKey: (fileKey: string) => void;
     resetState: () => void;
@@ -85,6 +87,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
   category: DEFAULT_CATEGORY,
   nameOrEmail: '',
   description: '',
+  note: '',
   showFriends: true,
   isFileUploading: false,
   canSplitScreenClosed: true,
@@ -221,6 +224,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         return { currentUser, splitShares, paidBy: currentUser, participants };
       }),
     setDescription: (description) => set({ description }),
+    setNote: (note) => set({ note }),
     setFileUploading: (isFileUploading) => set({ isFileUploading }),
     setFileKey: (fileKey) => set({ fileKey }),
     resetState: () => {
@@ -228,6 +232,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         amount: 0n,
         participants: s.currentUser ? [s.currentUser] : [],
         description: '',
+        note: '',
         fileKey: '',
         category: DEFAULT_CATEGORY,
         splitType: SplitType.EQUAL,
@@ -251,6 +256,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         amount: 0n,
         amountStr: '',
         description: '',
+        note: '',
         fileKey: '',
         isNegative: false,
         canSplitScreenClosed: true,

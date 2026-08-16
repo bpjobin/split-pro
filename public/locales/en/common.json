@@ -90,6 +90,7 @@
     "import": "Import",
     "invite": "Invite",
     "leave": "Leave",
+    "move_to_group": "Move to group",
     "next": "Next",
     "save": "Save",
     "settle_up": "Settle up",
@@ -97,7 +98,8 @@
     "reconnect": "Reconnect",
     "connect": "Connect",
     "save_and_add_another": "Save & add another",
-    "bulk_add": "Bulk add"
+    "bulk_add": "Bulk add",
+    "import_csv": "Import from CSV"
   },
   "actors": {
     "all": "All",
@@ -179,10 +181,16 @@
   },
   "expense_details": {
     "add_expense": "Add expense",
+    "move_expense": {
+      "title": "Move to another group",
+      "success": "Expense moved to the group",
+      "no_groups": "No other groups contain all participants"
+    },
     "add_expense_details": {
       "add_new_expense": "Add new expense",
       "amount_placeholder": "Enter amount",
       "description_placeholder": "Enter description",
+      "note_placeholder": "Enter note (optional)",
       "pick_a_date": "Pick a date",
       "select_user_or_group": {
         "add_to_split_pro": "Add to Split Pro",
@@ -259,6 +267,21 @@
       "row_placeholder": "Enter description",
       "submit_all": "Add all expenses",
       "add_row_required": "Add at least one expense with a description and amount"
+    },
+    "csv_import": {
+      "title": "Import from CSV",
+      "choose_file": "Choose CSV file",
+      "download_template": "Download template",
+      "first_row_header": "First row contains column names",
+      "date_column": "Date column",
+      "description_column": "Description column",
+      "amount_column": "Amount column",
+      "column": "Column",
+      "rows_found": "{{count}} rows found",
+      "check_all": "Check all",
+      "uncheck_all": "Uncheck all",
+      "no_rows_found": "No rows could be parsed. Check the column mapping.",
+      "no_file_selected": "Select a CSV file to start importing transactions."
     },
     "title": "Add expense",
     "title_mobile": "Add",

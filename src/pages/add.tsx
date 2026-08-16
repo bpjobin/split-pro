@@ -30,6 +30,7 @@ const AddPage: NextPageWithUser<{
     setCurrency,
     setAmount,
     setDescription,
+    setNote,
     setPaidBy,
     setAmountStr,
     setExpenseDate,
@@ -208,6 +209,7 @@ const AddPage: NextPageWithUser<{
       ),
     );
     setDescription(expenseQuery.data.name);
+    setNote(expenseQuery.data.note ?? '');
     setCategory(expenseQuery.data.category);
     setAmount(expenseQuery.data.amount);
     setParticipants(
@@ -250,6 +252,7 @@ const AddPage: NextPageWithUser<{
     setCategory,
     setCurrency,
     setDescription,
+    setNote,
     setExpenseDate,
     setGroup,
     setPaidBy,

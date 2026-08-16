@@ -3,8 +3,9 @@ import { isSameDay } from 'date-fns';
 import { type User as NextUser } from 'next-auth';
 
 import type { inferRouterOutputs } from '@trpc/server';
-import { ArrowRightIcon, Landmark, Merge, PencilIcon, Users } from 'lucide-react';
+import { ArrowRightIcon, FolderInput, Landmark, Merge, PencilIcon, Users } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import React, { type ComponentProps, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -70,6 +71,9 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
               {expense.transactionId && <Landmark className="text-positive h-4 w-4" />}
             </div>
             <p className="text-2xl font-semibold">{toUIString(expense.amount)}</p>
+            {expense.note ? (
+              <p className="text-sm whitespace-pre-wrap text-gray-500">{expense.note}</p>
+            ) : null}
             {!isSameDay(expense.expenseDate, expense.createdAt) ? (
               <p className="text-sm text-gray-500">
                 {toUIDate(expense.expenseDate, { year: true })}
@@ -111,6 +115,7 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
                 </Button>
               </Link>
             ) : null}
+            <MoveExpenseToGroup expense={expense} />
           </div>
         </div>
         <div>{expense.fileKey ? <Receipt fileKey={expense.fileKey} /> : null}</div>
@@ -191,6 +196,104 @@ const ExpenseParticipantEntry: React.FC<{
       </span>
       <span className={amountColorClass}>{toUIString(participant.amount)}</span>
     </div>
+  );
+};
+
+export const MoveExpenseToGroup: React.FC<{ expense: ExpenseDetailsOutput }> = ({ expense }) => {
+  const { t } = useTranslationWithUtils();
+  const router = useRouter();
+
+  const [open, setOpen] = useState(false);
+
+  const groupsQuery = api.group.getAllGroups.useQuery();
+  const addExpenseMutation = api.expense.addOrEditExpense.useMutation();
+  const apiUtils = api.useUtils();
+
+  const otherGroups = useMemo(() => {
+    const participantIds = new Set(expense.expenseParticipants.map((p) => p.userId));
+    participantIds.add(expense.paidBy);
+
+    return (
+      groupsQuery.data
+        ?.map((g) => g.group)
+        .filter(
+          (g) =>
+            g.id !== expense.groupId && g.groupUsers.every((gu) => participantIds.has(gu.userId)),
+        ) ?? []
+    );
+  }, [groupsQuery.data, expense.groupId, expense.expenseParticipants, expense.paidBy]);
+
+  const onGroupSelect = useCallback(
+    async (newGroupId: number) => {
+      try {
+        await addExpenseMutation.mutateAsync([
+          {
+            expenseId: expense.id,
+            name: expense.name,
+            currency: expense.currency,
+            amount: expense.amount,
+            groupId: newGroupId,
+            splitType: expense.splitType,
+            participants: expense.expenseParticipants.map((p) => ({
+              userId: p.userId,
+              amount: p.amount,
+            })),
+            paidBy: expense.paidBy,
+            category: expense.category,
+            expenseDate: expense.expenseDate,
+          },
+        ]);
+        await apiUtils.expense.invalidate();
+        await apiUtils.group.invalidate();
+        toast.success(t('expense_details.move_expense.success'));
+        setOpen(false);
+        router.push(`/groups/${newGroupId}/expenses/${expense.id}`).catch(console.error);
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred while moving expense.',
+        );
+      }
+    },
+    [expense, addExpenseMutation, apiUtils, router, t],
+  );
+
+  if (expense.splitType === SplitType.CURRENCY_CONVERSION) {
+    return null;
+  }
+
+  return (
+    <AppDrawer
+      open={open}
+      onOpenChange={setOpen}
+      title={t('expense_details.move_expense.title')}
+      trigger={
+        <Button variant="outline" size="sm" className="mt-2 gap-2">
+          <FolderInput className="size-4" />
+          {t('actions.move_to_group')}
+        </Button>
+      }
+    >
+      <div className="flex flex-col">
+        {otherGroups.map((g) => (
+          <button
+            key={g.id}
+            className="flex w-full items-center gap-2 border-b border-gray-900 py-3"
+            onClick={() => onGroupSelect(g.id)}
+          >
+            <EntityAvatar entity={g} size={30} />
+            <span className="truncate">{g.name}</span>
+          </button>
+        ))}
+        {0 === otherGroups.length ? (
+          <p className="py-4 text-center text-sm text-gray-500">
+            {t('expense_details.move_expense.no_groups')}
+          </p>
+        ) : null}
+      </div>
+    </AppDrawer>
   );
 };
 

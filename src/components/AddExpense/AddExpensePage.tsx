@@ -1,4 +1,11 @@
-import { HeartHandshakeIcon, Landmark, ListPlus, RefreshCcwDot, X } from 'lucide-react';
+import {
+  FileSpreadsheet,
+  HeartHandshakeIcon,
+  Landmark,
+  ListPlus,
+  RefreshCcwDot,
+  X,
+} from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -16,6 +23,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import AddBankTransactions from './AddBankTransactions';
 import BulkAddExpense from './BulkAddExpense';
+import CsvImport from './CsvImport';
 import { CategoryPicker } from './CategoryPicker';
 import { CurrencyPicker } from './CurrencyPicker';
 import { DateSelector } from './DateSelector';
@@ -43,6 +51,7 @@ export const AddOrEditExpensePage: React.FC<{
   const currency = useAddExpenseStore((s) => s.currency);
   const category = useAddExpenseStore((s) => s.category);
   const description = useAddExpenseStore((s) => s.description);
+  const note = useAddExpenseStore((s) => s.note);
   const isFileUploading = useAddExpenseStore((s) => s.isFileUploading);
   const amtStr = useAddExpenseStore((s) => s.amountStr);
   const expenseDate = useAddExpenseStore((s) => s.expenseDate);
@@ -63,6 +72,7 @@ export const AddOrEditExpensePage: React.FC<{
     setCurrency,
     setCategory,
     setDescription,
+    setNote,
     setAmount,
     setAmountStr,
     resetState,
@@ -135,6 +145,7 @@ export const AddOrEditExpensePage: React.FC<{
             expenseDate,
             expenseId,
             transactionId,
+            note,
             cronExpression: cronExpression ? cronToBackend(cronExpression) : undefined,
           },
         ],
@@ -191,6 +202,7 @@ export const AddOrEditExpensePage: React.FC<{
     }
   }, [
     description,
+    note,
     currency,
     isNegative,
     amount,
@@ -239,6 +251,7 @@ export const AddOrEditExpensePage: React.FC<{
           category,
           fileKey,
           expenseDate,
+          note,
           cronExpression: cronExpression ? cronToBackend(cronExpression) : undefined,
         },
       ]);
@@ -255,6 +268,7 @@ export const AddOrEditExpensePage: React.FC<{
     }
   }, [
     description,
+    note,
     currency,
     isNegative,
     amount,
@@ -360,7 +374,7 @@ export const AddOrEditExpensePage: React.FC<{
           {t('actions.save')}
         </Button>{' '}
       </div>
-      <UserInput isEditing={Boolean(expenseId)} />
+      <UserInput />
       {showFriends || (1 === participants.length && !group) ? (
         <SelectUserOrGroup enableSendingInvites={enableSendingInvites} />
       ) : (
@@ -387,6 +401,12 @@ export const AddOrEditExpensePage: React.FC<{
               rightIcon={currencyConversionComponent}
             />
           </div>
+          <Input
+            placeholder={t('expense_details.add_expense_details.note_placeholder')}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="text-sm placeholder:text-sm"
+          />
           <div className="h-[180px]">
             {amount && '' !== description ? (
               <>
@@ -500,6 +520,15 @@ export const AddOrEditExpensePage: React.FC<{
                   />
                 </Button>
               </AddBankTransactions>
+              <CsvImport>
+                <Button
+                  variant="ghost"
+                  className="hover:text-foreground/80 items-center justify-between px-2"
+                  title={t('actions.import_csv')}
+                >
+                  <FileSpreadsheet className="h-6 w-6" />
+                </Button>
+              </CsvImport>
               <Button
                 variant="ghost"
                 className={cn('px-2', transactionId ? 'text-red-500' : 'invisible')}

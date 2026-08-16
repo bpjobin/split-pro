@@ -19,6 +19,7 @@ interface BulkRow {
   amountStr: string;
   amount: bigint;
   date: Date;
+  note: string;
 }
 
 const createRow = (): BulkRow => ({
@@ -27,6 +28,7 @@ const createRow = (): BulkRow => ({
   amountStr: '',
   amount: 0n,
   date: new Date(),
+  note: '',
 });
 
 const BulkAddExpense: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -96,6 +98,7 @@ const BulkAddExpense: React.FC<{ children: React.ReactNode }> = ({ children }) =
         paidBy: paidBy.id,
         category,
         expenseDate: row.date,
+        note: row.note,
       };
     });
 
@@ -180,6 +183,12 @@ const BulkAddExpense: React.FC<{ children: React.ReactNode }> = ({ children }) =
                 onSelect={(date?: Date) => date && updateRow(row.id, { date })}
               />
             </div>
+            <Input
+              placeholder={t('expense_details.add_expense_details.note_placeholder')}
+              value={row.note}
+              onChange={(e) => updateRow(row.id, { note: e.target.value })}
+              className="text-sm"
+            />
           </div>
         ))}
         <Button variant="outline" onClick={() => setRows((prev) => [...prev, createRow()])}>

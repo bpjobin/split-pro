@@ -1226,6 +1226,7 @@ describe('resetForAnother', () => {
     actions.setPaidBy(participant);
     actions.setSplitType(SplitType.EXACT);
     actions.setDescription('Dinner');
+    actions.setNote('With dessert');
     actions.setAmount(10000n);
     actions.setAmountStr('100.00');
     actions.setCategory('Food');
@@ -1236,6 +1237,7 @@ describe('resetForAnother', () => {
     expect(state.amount).toBe(0n);
     expect(state.amountStr).toBe('');
     expect(state.description).toBe('');
+    expect(state.note).toBe('');
     expect(state.group?.id).toBe(7);
     expect(state.paidBy?.id).toBe(42);
     expect(state.splitType).toBe(SplitType.EXACT);
