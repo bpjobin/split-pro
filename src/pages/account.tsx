@@ -1,4 +1,4 @@
-import { SiGithub, SiX } from '@icons-pack/react-simple-icons';
+import { SiGithub } from '@icons-pack/react-simple-icons';
 import {
   BadgeInfo,
   CreditCard,
@@ -8,6 +8,7 @@ import {
   HeartHandshakeIcon,
   Languages,
   Star,
+  Tag,
 } from 'lucide-react';
 import type { GetServerSideProps } from 'next';
 import { signOut } from 'next-auth/react';
@@ -37,6 +38,8 @@ import { api } from '~/utils/api';
 import type { NextPageWithUser } from '~/types';
 import { DebugInfo } from '~/components/Account/DebugInfo';
 import { useAppStore } from '~/store/appStore';
+import { TagManager } from '~/components/TagManager';
+import { AppDrawer } from '~/components/ui/drawer';
 
 const AccountPage: NextPageWithUser<{
   feedBackPossible: boolean;
@@ -171,6 +174,18 @@ const AccountPage: NextPageWithUser<{
             <DownloadCloud className="size-5 text-violet-500" />
             {t('account.import_from_splitwise')}
           </AccountButton>
+
+          <AppDrawer
+            title={t('tags.manage')}
+            trigger={
+              <AccountButton>
+                <Tag className="size-5 text-blue-500" />
+                {t('tags.manage')}
+              </AccountButton>
+            }
+          >
+            <TagManager />
+          </AppDrawer>
 
           <DebugInfo>
             <AccountButton>

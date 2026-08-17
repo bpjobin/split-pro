@@ -204,6 +204,7 @@
     "title": "Statistics",
     "by_category": "Expenses by category",
     "by_person": "Expenses by person",
+    "by_tag": "Expenses by tag",
     "over_time": "Spending over time",
     "total_spent": "Total spent",
     "average_expense": "Average expense",
@@ -444,7 +445,8 @@
     "add_expense": "Add Expense",
     "recurring": "Recurring",
     "balances": "Balances",
-    "groups": "Groups"
+    "groups": "Groups",
+    "search": "Search"
   },
   "recurrence": {
     "title": "Recurrence",

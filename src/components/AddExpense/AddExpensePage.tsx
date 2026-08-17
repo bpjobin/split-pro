@@ -38,7 +38,6 @@ import { currencyConversion } from '~/utils/numbers';
 import { CurrencyConversionIcon } from '../ui/categoryIcons';
 import { useSession } from 'next-auth/react';
 import { ExpenseItems } from './ExpenseItems';
-import { ScanReceiptButton } from './ScanReceiptButton';
 
 export const AddOrEditExpensePage: React.FC<{
   enableSendingInvites: boolean;
@@ -472,7 +471,6 @@ export const AddOrEditExpensePage: React.FC<{
                   />
                   <div className="flex items-center gap-2">
                     <UploadFile />
-                    <ScanReceiptButton fileKey={fileKey} />
                     {!expenseId && (
                       <Button
                         variant="secondary"

@@ -407,6 +407,9 @@ export const expenseRouter = createTRPCRouter({
             },
           },
           items: true,
+          tags: {
+            include: { tag: true },
+          },
         },
       });
 
@@ -716,14 +719,12 @@ export const expenseRouter = createTRPCRouter({
     const byCategory: Record<string, { total: bigint; count: number }> = {};
     const byPerson: Record<number, { total: bigint; count: number; name: string }> = {};
     const byMonth: Record<string, { total: bigint; count: number }> = {};
+    const byTag: Record<string, { total: bigint; count: number; name: string; color: string }> = {};
 
     let totalSpent = 0n;
     let totalExpenses = 0;
 
     for (const expense of expenses) {
-      const myParticipant = expense.expenseParticipants.find((p) => p.userId === userId);
-      const myShare = myParticipant?.amount ?? 0n;
-
       totalSpent += expense.amount;
       totalExpenses++;
 
@@ -748,6 +749,16 @@ export const expenseRouter = createTRPCRouter({
         total: (byMonth[monthKey]?.total ?? 0n) + expense.amount,
         count: (byMonth[monthKey]?.count ?? 0) + 1,
       };
+
+      for (const { tag } of expense.tags) {
+        const existing = byTag[tag.id];
+        if (!existing) {
+          byTag[tag.id] = { total: expense.amount, count: 1, name: tag.name, color: tag.color };
+        } else {
+          existing.total += expense.amount;
+          existing.count++;
+        }
+      }
     }
 
     return {
@@ -755,16 +766,80 @@ export const expenseRouter = createTRPCRouter({
       totalExpenses,
       averageExpense: totalExpenses > 0 ? totalSpent / BigInt(totalExpenses) : 0n,
       byCategory: Object.entries(byCategory)
-        .map(([category, data]) => Object.assign({ category }, data))
+        .map(([category, data]) => ({ category, ...data }))
         .sort((a, b) => (a.total > b.total ? -1 : 1)),
       byPerson: Object.entries(byPerson)
-        .map(([id, data]) => Object.assign({ userId: Number(id) }, data))
+        .map(([id, data]) => ({ userId: Number(id), ...data }))
         .sort((a, b) => (a.total > b.total ? -1 : 1)),
       byMonth: Object.entries(byMonth)
-        .map(([month, data]) => Object.assign({ month }, data))
+        .map(([month, data]) => ({ month, ...data }))
         .sort((a, b) => a.month.localeCompare(b.month)),
+      byTag: Object.entries(byTag)
+        .map(([id, data]) => ({ tagId: id, ...data }))
+        .sort((a, b) => (a.total > b.total ? -1 : 1)),
     };
   }),
+
+  addItemsToExpense: protectedProcedure
+    .input(
+      z.object({
+        expenseId: z.string(),
+        items: z.array(
+          z.object({
+            name: z.string(),
+            amount: z.bigint(),
+            excluded: z.boolean(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.session.user.id;
+
+      const expense = await db.expense.findUnique({
+        where: { id: input.expenseId },
+        select: { addedBy: true },
+      });
+
+      if (!expense) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Expense not found' });
+      }
+
+      const isParticipant = await db.expenseParticipant.findUnique({
+        where: {
+          expenseId_userId: {
+            expenseId: input.expenseId,
+            userId,
+          },
+        },
+      });
+
+      if (!isParticipant && expense.addedBy !== userId) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authorized' });
+      }
+
+      const includedTotal = input.items
+        .filter((item) => !item.excluded)
+        .reduce((sum, item) => sum + item.amount, 0n);
+
+      await db.$transaction(async (tx) => {
+        await tx.expenseItem.createMany({
+          data: input.items.map((item) => ({
+            expenseId: input.expenseId,
+            name: item.name,
+            amount: item.amount,
+            excluded: item.excluded,
+          })),
+        });
+
+        await tx.expense.update({
+          where: { id: input.expenseId },
+          data: { amount: includedTotal },
+        });
+      });
+
+      return { success: true };
+    }),
 });
 
 const validateGroupMembership = async (groupId: number, userIds: number[]): Promise<void> => {

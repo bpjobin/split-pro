@@ -38,6 +38,8 @@ import { AppDrawer } from '../ui/drawer';
 import { Separator } from '../ui/separator';
 import { Receipt } from './Receipt';
 import { DateSelector } from '../AddExpense/DateSelector';
+import { ScanReceiptButton } from '../AddExpense/ScanReceiptButton';
+import { TagPicker } from '../TagPicker';
 
 type ExpenseDetailsOutput = NonNullable<inferRouterOutputs<ExpenseRouter>['getExpenseDetails']>;
 
@@ -48,6 +50,7 @@ interface ExpenseDetailsProps {
 
 const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
   const { displayName, toUIDate, t, getCurrencyHelpersCached } = useTranslationWithUtils();
+  const apiUtils = api.useUtils();
 
   const { cronParser, i18nReady } = useIntlCronParser();
 
@@ -108,6 +111,9 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
                 ))}
               </div>
             ) : null}
+            <div className="mt-1">
+              <TagPicker expenseId={expense.id} expenseTags={expense.tags ?? []} />
+            </div>
             {!isSameDay(expense.expenseDate, expense.createdAt) ? (
               <p className="text-sm text-gray-500">
                 {toUIDate(expense.expenseDate, { year: true })}
@@ -152,7 +158,18 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
             <MoveExpenseToGroup expense={expense} />
           </div>
         </div>
-        <div>{expense.fileKey ? <Receipt fileKey={expense.fileKey} /> : null}</div>
+        <div className="flex flex-col items-end gap-2">
+          {expense.fileKey ? <Receipt fileKey={expense.fileKey} /> : null}
+          {expense.fileKey ? (
+            <ScanReceiptButton
+              fileKey={expense.fileKey}
+              expenseId={expense.id}
+              onItemsAdded={() => {
+                void apiUtils.expense.getExpenseDetails.invalidate({ expenseId: expense.id });
+              }}
+            />
+          ) : null}
+        </div>
       </div>
       <Separator />
       <div className="mt-10 flex items-center gap-2">

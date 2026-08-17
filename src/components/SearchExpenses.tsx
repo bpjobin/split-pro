@@ -1,8 +1,11 @@
+import { CategoryIcon } from '~/components/ui/categoryIcons';
 import { Search, X } from 'lucide-react';
+import Link from 'next/link';
 import React, { useCallback, useState } from 'react';
 import { Button } from '~/components/ui/button';
 import { useTranslationWithUtils } from '~/hooks/useTranslationWithUtils';
 import { api } from '~/utils/api';
+import { TagPicker } from './TagPicker';
 
 export const SearchExpenses: React.FC = () => {
   const { t } = useTranslationWithUtils();
@@ -14,7 +17,7 @@ export const SearchExpenses: React.FC = () => {
 
   const { data: allTags } = api.tag.getUserTags.useQuery();
 
-  const { data: searchResults } = api.tag.searchExpenses.useQuery(
+  const { data: searchResults, isLoading } = api.tag.searchExpenses.useQuery(
     { query: activeQuery ?? '', tagIds: activeTagIds },
     { enabled: activeQuery !== null && (activeQuery.trim().length > 0 || activeTagIds.length > 0) },
   );
@@ -40,8 +43,11 @@ export const SearchExpenses: React.FC = () => {
     );
   }, []);
 
+  const hasActiveSearch =
+    activeQuery !== null && (activeQuery.trim().length > 0 || activeTagIds.length > 0);
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
@@ -88,6 +94,7 @@ export const SearchExpenses: React.FC = () => {
               {userTag.name}
             </button>
           ))}
+          {allTags?.length === 0 && <p className="text-xs text-gray-500">{t('tags.no_tags')}</p>}
         </div>
       )}
 
@@ -96,6 +103,57 @@ export const SearchExpenses: React.FC = () => {
           {t('search.apply')}
         </Button>
       )}
+
+      {hasActiveSearch && (
+        <div className="flex flex-col gap-2">
+          {isLoading && <p className="text-sm text-gray-500">Loading...</p>}
+          {!isLoading && searchResults && searchResults.length === 0 && (
+            <p className="text-sm text-gray-500">{t('search.no_results')}</p>
+          )}
+          {searchResults?.map((expense) => (
+            <SearchResultItem key={expense.id} expense={expense} />
+          ))}
+        </div>
+      )}
     </div>
+  );
+};
+
+const SearchResultItem: React.FC<{
+  expense: {
+    id: string;
+    name: string;
+    amount: bigint;
+    currency: string;
+    category: string;
+    expenseDate: Date;
+    paidByUser: { id: number; name: string | null; image: string | null };
+    tags: { tag: { id: string; name: string; color: string } }[];
+  };
+}> = ({ expense }) => {
+  const { toUIDate, getCurrencyHelpersCached, displayName } = useTranslationWithUtils();
+  const { toUIString } = getCurrencyHelpersCached(expense.currency);
+
+  return (
+    <Link
+      href={`/expenses/${expense.id}`}
+      className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-gray-50"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <CategoryIcon category={expense.category} className="size-5 shrink-0 text-gray-400" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{expense.name}</p>
+          <p className="text-xs text-gray-500">
+            {displayName(expense.paidByUser)} · {toUIDate(expense.expenseDate)}
+          </p>
+          {expense.tags.length > 0 && (
+            <div className="mt-1">
+              <TagPicker expenseId={expense.id} expenseTags={expense.tags} />
+            </div>
+          )}
+        </div>
+      </div>
+      <span className="shrink-0 text-sm font-medium">{toUIString(expense.amount)}</span>
+    </Link>
   );
 };
