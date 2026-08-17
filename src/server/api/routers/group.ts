@@ -175,6 +175,7 @@ export const groupRouter = createTRPCRouter({
       where: {
         groupId: input.groupId,
         deletedAt: null,
+        mutedAt: null,
         splitType: {
           not: SplitType.SETTLEMENT,
         },

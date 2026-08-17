@@ -33,6 +33,7 @@ export type CreateExpense = Omit<
   transactionId?: string;
   note?: string;
   participants: Omit<ExpenseParticipant, 'expenseId'>[];
+  items?: { name: string; amount: bigint; excluded: boolean }[];
 };
 
 export const createExpenseSchema = z.object({
@@ -59,6 +60,9 @@ export const createExpenseSchema = z.object({
   expenseId: z.string().optional(),
   conversionToId: z.string().optional(),
   cronExpression: z.string().optional(),
+  items: z
+    .array(z.object({ name: z.string(), amount: z.bigint(), excluded: z.boolean() }))
+    .optional(),
 }) satisfies z.ZodType<CreateExpense>;
 
 export const createCurrencyConversionSchema = z.object({

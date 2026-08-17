@@ -11,6 +11,12 @@ import { cyrb128, splitmix32 } from '~/utils/random';
 
 export type Participant = User & { amount?: bigint };
 export type SplitShares = Record<number, Record<SplitType, bigint | undefined>>;
+export interface ExpenseItemInput {
+  id: string;
+  name: string;
+  amount: bigint;
+  excluded: boolean;
+}
 
 export interface AddExpenseState {
   amount: bigint;
@@ -37,6 +43,7 @@ export interface AddExpenseState {
   transactionId?: string;
   multipleTransactions: TransactionAddInputModel[];
   isTransactionLoading: boolean;
+  items: ExpenseItemInput[];
   actions: {
     setAmount: (amount: bigint) => void;
     setAmountStr: (amountStr: string) => void;
@@ -66,6 +73,14 @@ export interface AddExpenseState {
     setSingleTransaction: (singleTransaction: TransactionAddInputModel) => void;
     setIsTransactionLoading: (isTransactionLoading: boolean) => void;
     setCronExpression: (cronExpression: string) => void;
+    addItem: () => void;
+    removeItem: (id: string) => void;
+    updateItem: (
+      id: string,
+      updates: Partial<Pick<ExpenseItemInput, 'name' | 'amount' | 'excluded'>>,
+    ) => void;
+    toggleItemExcluded: (id: string) => void;
+    setItems: (items: ExpenseItemInput[]) => void;
   };
 }
 
@@ -97,6 +112,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
   multipleTransactions: [],
   isTransactionLoading: false,
   cronExpression: '',
+  items: [],
   actions: {
     setAmount: (realAmount) =>
       set((s) => {
@@ -249,6 +265,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         cronExpression: '',
         isFileUploading: false,
         paidBy: s.currentUser,
+        items: [],
       }));
     },
     resetForAnother: () => {
@@ -268,6 +285,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         cronExpression: '',
         isFileUploading: false,
         participants: s.participants.map((p) => ({ ...p, amount: undefined })),
+        items: [],
       }));
     },
     setSplitScreenOpen: (splitScreenOpen) => set({ splitScreenOpen }),
@@ -289,6 +307,33 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
       }),
     setIsTransactionLoading: (isTransactionLoading) => set({ isTransactionLoading }),
     setCronExpression: (cronExpression) => set({ cronExpression }),
+    addItem: () =>
+      set((s) => ({
+        items: [
+          ...s.items,
+          {
+            id: crypto.randomUUID(),
+            name: '',
+            amount: 0n,
+            excluded: false,
+          },
+        ],
+      })),
+    removeItem: (id) =>
+      set((s) => ({
+        items: s.items.filter((item) => item.id !== id),
+      })),
+    updateItem: (id, updates) =>
+      set((s) => ({
+        items: s.items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+      })),
+    toggleItemExcluded: (id) =>
+      set((s) => ({
+        items: s.items.map((item) =>
+          item.id === id ? { ...item, excluded: !item.excluded } : item,
+        ),
+      })),
+    setItems: (items) => set({ items }),
   },
 }));
 

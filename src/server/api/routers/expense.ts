@@ -320,6 +320,10 @@ export const expenseRouter = createTRPCRouter({
               simplifyDebts: true,
             },
           },
+          tags: {
+            include: { tag: true },
+          },
+          items: true,
         },
       });
 
@@ -354,6 +358,10 @@ export const expenseRouter = createTRPCRouter({
           paidByUser: true,
           deletedByUser: true,
           conversionTo: true,
+          tags: {
+            include: { tag: true },
+          },
+          items: true,
         },
       });
 
@@ -398,6 +406,7 @@ export const expenseRouter = createTRPCRouter({
               },
             },
           },
+          items: true,
         },
       });
 
@@ -593,6 +602,51 @@ export const expenseRouter = createTRPCRouter({
       await deleteExpense(input.expenseId, ctx.session.user.id);
     }),
 
+  toggleMuteExpense: protectedProcedure
+    .input(z.object({ expenseId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const expense = await db.expense.findUnique({
+        where: { id: input.expenseId },
+        select: {
+          id: true,
+          mutedAt: true,
+          mutedBy: true,
+        },
+      });
+
+      if (!expense) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Expense not found' });
+      }
+
+      const isParticipant = await db.expenseParticipant.findUnique({
+        where: {
+          expenseId_userId: {
+            expenseId: input.expenseId,
+            userId: ctx.session.user.id,
+          },
+        },
+      });
+
+      if (!isParticipant) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You are not a participant of this expense',
+        });
+      }
+
+      const isMuted = expense.mutedAt !== null;
+
+      const updated = await db.expense.update({
+        where: { id: input.expenseId },
+        data: isMuted
+          ? { mutedAt: null, mutedBy: null }
+          : { mutedAt: new Date(), mutedBy: ctx.session.user.id },
+        select: { mutedAt: true, mutedBy: true },
+      });
+
+      return updated;
+    }),
+
   getCurrencyRate: protectedProcedure.input(getCurrencyRateSchema).query(async ({ input }) => {
     const { from, to, date } = input;
 
@@ -636,6 +690,81 @@ export const expenseRouter = createTRPCRouter({
 
       return { rates };
     }),
+
+  getStats: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const expenses = await db.expense.findMany({
+      where: {
+        deletedAt: null,
+        expenseParticipants: {
+          some: { userId },
+        },
+      },
+      include: {
+        expenseParticipants: true,
+        paidByUser: {
+          select: { id: true, name: true },
+        },
+        tags: {
+          include: { tag: true },
+        },
+      },
+      orderBy: { expenseDate: 'desc' },
+    });
+
+    const byCategory: Record<string, { total: bigint; count: number }> = {};
+    const byPerson: Record<number, { total: bigint; count: number; name: string }> = {};
+    const byMonth: Record<string, { total: bigint; count: number }> = {};
+
+    let totalSpent = 0n;
+    let totalExpenses = 0;
+
+    for (const expense of expenses) {
+      const myParticipant = expense.expenseParticipants.find((p) => p.userId === userId);
+      const myShare = myParticipant?.amount ?? 0n;
+
+      totalSpent += expense.amount;
+      totalExpenses++;
+
+      byCategory[expense.category] = {
+        total: (byCategory[expense.category]?.total ?? 0n) + expense.amount,
+        count: (byCategory[expense.category]?.count ?? 0) + 1,
+      };
+
+      const paidById = expense.paidBy;
+      if (!byPerson[paidById]) {
+        byPerson[paidById] = {
+          total: 0n,
+          count: 0,
+          name: expense.paidByUser?.name ?? 'Unknown',
+        };
+      }
+      byPerson[paidById].total += expense.amount;
+      byPerson[paidById].count++;
+
+      const monthKey = expense.expenseDate.toISOString().slice(0, 7);
+      byMonth[monthKey] = {
+        total: (byMonth[monthKey]?.total ?? 0n) + expense.amount,
+        count: (byMonth[monthKey]?.count ?? 0) + 1,
+      };
+    }
+
+    return {
+      totalSpent,
+      totalExpenses,
+      averageExpense: totalExpenses > 0 ? totalSpent / BigInt(totalExpenses) : 0n,
+      byCategory: Object.entries(byCategory)
+        .map(([category, data]) => Object.assign({ category }, data))
+        .sort((a, b) => (a.total > b.total ? -1 : 1)),
+      byPerson: Object.entries(byPerson)
+        .map(([id, data]) => Object.assign({ userId: Number(id) }, data))
+        .sort((a, b) => (a.total > b.total ? -1 : 1)),
+      byMonth: Object.entries(byMonth)
+        .map(([month, data]) => Object.assign({ month }, data))
+        .sort((a, b) => a.month.localeCompare(b.month)),
+    };
+  }),
 });
 
 const validateGroupMembership = async (groupId: number, userIds: number[]): Promise<void> => {

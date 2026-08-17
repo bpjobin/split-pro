@@ -1,9 +1,10 @@
 import { SplitType } from '@prisma/client';
 import { type inferRouterOutputs } from '@trpc/server';
+import { Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { toast } from 'sonner';
 import { CategoryIcon, CurrencyConversionIcon, SettleupIcon } from '~/components/ui/categoryIcons';
 import { useTranslationWithUtils } from '~/hooks/useTranslationWithUtils';
@@ -11,6 +12,7 @@ import { cn } from '~/lib/utils';
 import type { ExpenseRouter } from '~/server/api/routers/expense';
 import { api } from '~/utils/api';
 import { Separator } from '../ui/separator';
+import { TagPicker } from '../TagPicker';
 
 type ExpensesOutput =
   | inferRouterOutputs<ExpenseRouter>['getGroupExpenses']
@@ -89,6 +91,27 @@ const Expense: ExpenseComponent = ({ e, userId }) => {
   const { displayName, toUIDate, t, getCurrencyHelpersCached } = useTranslationWithUtils();
   const router = useRouter();
   const { friendId } = router.query;
+  const apiUtils = api.useUtils();
+
+  const toggleMuteMutation = api.expense.toggleMuteExpense.useMutation({
+    onSuccess: () => {
+      void apiUtils.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const handleToggleMute = useCallback(
+    (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleMuteMutation.mutate({ expenseId: e.id });
+    },
+    [toggleMuteMutation, e.id],
+  );
+
+  const isMuted = e.mutedAt !== null;
 
   const youPaid = e.paidBy === userId && e.amount >= 0n;
   const yourExpense = e.expenseParticipants.find((participant) => participant.userId === userId);
@@ -109,14 +132,23 @@ const Expense: ExpenseComponent = ({ e, userId }) => {
         </div>
         <CategoryIcon category={e.category} className="size-5 shrink-0 text-gray-400" />
         <div className="min-w-0 pe-1">
-          <p className="truncate text-sm lg:text-base">{e.name}</p>
+          <p
+            className={cn('truncate text-sm lg:text-base', isMuted && 'text-gray-400 line-through')}
+          >
+            {e.name}
+          </p>
           <p className="truncate text-xs text-gray-500">
             {displayName(e.paidByUser, userId)}{' '}
             {t(`ui.expense.user.${e.amount < 0n ? 'received' : 'paid'}`)} {toUIString(e.amount)}
           </p>
+          {'tags' in e && e.tags && (
+            <div className="mt-1">
+              <TagPicker expenseId={e.id} expenseTags={e.tags} />
+            </div>
+          )}
         </div>
       </div>
-      <div className="min-w-10 shrink-0">
+      <div className="flex min-w-10 shrink-0 items-center gap-1">
         {youPaid || 0n !== yourExpenseAmount ? (
           <>
             <div className={`text-right text-xs ${youPaid ? 'text-positive' : 'text-negative'}`}>
@@ -133,6 +165,19 @@ const Expense: ExpenseComponent = ({ e, userId }) => {
             <p className="text-xs text-gray-400">{t('ui.not_involved')}</p>
           </div>
         )}
+        <button
+          type="button"
+          onClick={handleToggleMute}
+          className={cn(
+            'ml-1 shrink-0 rounded p-1 transition-colors',
+            isMuted
+              ? 'text-amber-500 hover:bg-amber-500/10'
+              : 'text-gray-400 hover:bg-gray-400/10 hover:text-gray-600',
+          )}
+          title={isMuted ? t('expense_details.unmute') : t('expense_details.mute')}
+        >
+          {isMuted ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+        </button>
       </div>
     </>
   );

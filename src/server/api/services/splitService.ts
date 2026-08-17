@@ -48,25 +48,40 @@ export async function createExpense(
     transactionId,
     note,
     cronExpression,
+    items,
   }: CreateExpense & { cronExpression?: string },
   currentUserId: number,
   conversionFromParams?: CreateExpense,
 ) {
+  // If items are provided, recalculate amount from included (non-excluded) items
+  let finalAmount = amount;
+  if (items && items.length > 0) {
+    const includedTotal = items
+      .filter((item) => !item.excluded)
+      .reduce((sum, item) => sum + item.amount, 0n);
+    if (includedTotal > 0n) {
+      finalAmount = includedTotal;
+    }
+  }
+
   const nonZeroParticipants = getNonZeroParticipants(participants);
 
   const conversionFrom = conversionFromParams
-    ? {
-        create: {
-          ...conversionFromParams,
-          addedBy: currentUserId,
-          expenseParticipants: {
-            create: getNonZeroParticipants(conversionFromParams.participants),
+    ? (() => {
+        const { items: _cfItems, ...rest } = conversionFromParams;
+        return {
+          create: {
+            ...rest,
+            addedBy: currentUserId,
+            expenseParticipants: {
+              create: getNonZeroParticipants(rest.participants),
+            },
+            expensePayments: {
+              create: [{ userId: rest.paidBy, amount: rest.amount }],
+            },
           },
-          expensePayments: {
-            create: [{ userId: conversionFromParams.paidBy, amount: conversionFromParams.amount }],
-          },
-        },
-      }
+        };
+      })()
     : undefined;
   if (conversionFrom) {
     // @ts-ignore
@@ -98,14 +113,14 @@ export async function createExpense(
         paidBy,
         name,
         category,
-        amount,
+        amount: finalAmount,
         splitType,
         currency,
         expenseParticipants: {
           create: nonZeroParticipants,
         },
         expensePayments: {
-          create: [{ userId: paidBy, amount }],
+          create: [{ userId: paidBy, amount: finalAmount }],
         },
         fileKey,
         addedBy: currentUserId,
@@ -138,6 +153,18 @@ export async function createExpense(
     const createdExpense = results[0] as Awaited<ReturnType<typeof db.expense.create>>;
     if (!createdExpense) {
       throw new Error('Expense creation failed');
+    }
+
+    // Create items separately after expense is created
+    if (items && items.length > 0) {
+      await db.expenseItem.createMany({
+        data: items.map((item) => ({
+          expenseId: createdExpense.id,
+          name: item.name,
+          amount: item.amount,
+          excluded: item.excluded,
+        })),
+      });
     }
 
     sendExpensePushNotification(createdExpense.id).catch(console.error);
@@ -221,12 +248,24 @@ export async function editExpense(
     transactionId,
     note,
     cronExpression,
+    items,
   }: CreateExpense & { cronExpression?: string },
   currentUserId: number,
   conversionToParams?: CreateExpense,
 ) {
   if (!expenseId) {
     throw new Error('Expense ID is required for editing');
+  }
+
+  // If items are provided, recalculate amount from included (non-excluded) items
+  let finalAmount = amount;
+  if (items && items.length > 0) {
+    const includedTotal = items
+      .filter((item) => !item.excluded)
+      .reduce((sum, item) => sum + item.amount, 0n);
+    if (includedTotal > 0n) {
+      finalAmount = includedTotal;
+    }
   }
 
   const expense = await db.expense.findUnique({
@@ -270,6 +309,13 @@ export async function editExpense(
     }),
   );
 
+  // Delete existing items
+  operations.push(
+    db.expenseItem.deleteMany({
+      where: { expenseId },
+    }),
+  );
+
   // Update expense with new details and create new participants and payments
   operations.push(
     db.expense.update({
@@ -279,14 +325,14 @@ export async function editExpense(
         paidBy,
         name,
         category,
-        amount,
+        amount: finalAmount,
         splitType,
         currency,
         expenseParticipants: {
           create: participants,
         },
         expensePayments: {
-          create: [{ userId: paidBy, amount }],
+          create: [{ userId: paidBy, amount: finalAmount }],
         },
         fileKey,
         transactionId,
@@ -300,7 +346,7 @@ export async function editExpense(
     if (!expense.conversionToId) {
       throw new Error('Conversion to expense not found for editing');
     }
-    const { participants: toParticipants, ...toExpenseData } = conversionToParams;
+    const { participants: toParticipants, items: _toItems, ...toExpenseData } = conversionToParams;
 
     operations.push(
       db.expense.update({
@@ -342,6 +388,19 @@ export async function editExpense(
   // For derived expenses, cronExpression is ignored entirely
 
   await db.$transaction(operations);
+
+  // Create items separately after expense is updated
+  if (items && items.length > 0) {
+    await db.expenseItem.createMany({
+      data: items.map((item) => ({
+        expenseId,
+        name: item.name,
+        amount: item.amount,
+        excluded: item.excluded,
+      })),
+    });
+  }
+
   sendExpensePushNotification(expenseId).catch(console.error);
   return { id: expenseId }; // Return the updated expense
 }

@@ -3,7 +3,16 @@ import { isSameDay } from 'date-fns';
 import { type User as NextUser } from 'next-auth';
 
 import type { inferRouterOutputs } from '@trpc/server';
-import { ArrowRightIcon, FolderInput, Landmark, Merge, PencilIcon, Users } from 'lucide-react';
+import {
+  ArrowRightIcon,
+  Eye,
+  EyeOff,
+  FolderInput,
+  Landmark,
+  Merge,
+  PencilIcon,
+  Users,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import React, { type ComponentProps, useCallback, useMemo, useState } from 'react';
@@ -18,6 +27,7 @@ import type { ExpenseRouter } from '~/server/api/routers/expense';
 import { useAddExpenseStore } from '~/store/addStore';
 import { api } from '~/utils/api';
 import { BigMath } from '~/utils/numbers';
+import { cn } from '~/lib/utils';
 
 import { CurrencyConversion } from '../Friend/CurrencyConversion';
 import { EntityAvatar } from '../ui/avatar';
@@ -73,6 +83,30 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
             <p className="text-2xl font-semibold">{toUIString(expense.amount)}</p>
             {expense.note ? (
               <p className="text-sm whitespace-pre-wrap text-gray-500">{expense.note}</p>
+            ) : null}
+            {expense.items && expense.items.length > 0 ? (
+              <div className="mt-2 flex flex-col gap-1 rounded-lg border p-2">
+                <p className="text-xs font-medium text-gray-500">{t('items.title')}</p>
+                {expense.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      'flex items-center justify-between text-sm',
+                      item.excluded && 'text-gray-400 line-through',
+                    )}
+                  >
+                    <span className="flex items-center gap-1">
+                      {item.excluded ? (
+                        <EyeOff className="size-3 text-amber-500" />
+                      ) : (
+                        <Eye className="size-3 text-gray-400" />
+                      )}
+                      {item.name}
+                    </span>
+                    <span>{toUIString(item.amount)}</span>
+                  </div>
+                ))}
+              </div>
             ) : null}
             {!isSameDay(expense.expenseDate, expense.createdAt) ? (
               <p className="text-sm text-gray-500">

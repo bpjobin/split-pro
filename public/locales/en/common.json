@@ -167,6 +167,48 @@
     "recurrence_delete_failed": "Failed to delete recurrence",
     "recurrence_update_failed": "Failed to update recurrence"
   },
+  "items": {
+    "add_item": "Add item",
+    "amount_placeholder": "Amount",
+    "exclude": "Exclude from total",
+    "include": "Include in total",
+    "name_placeholder": "Item name",
+    "title": "Items",
+    "total_included": "Total (included)"
+  },
+  "scan_receipt": {
+    "button": "Scan receipt",
+    "error": "Failed to scan receipt",
+    "no_items": "No items found on receipt",
+    "scanning": "Scanning...",
+    "success": "Found {{count}} items on receipt"
+  },
+  "tags": {
+    "created": "Tag created successfully",
+    "deleted": "Tag deleted successfully",
+    "edit": "Edit",
+    "loading": "Loading tags...",
+    "name_placeholder": "Enter tag name",
+    "no_tags": "No tags yet. Create one above.",
+    "updated": "Tag updated successfully",
+    "manage": "Manage tags",
+    "add_tag": "Add tag"
+  },
+  "search": {
+    "apply": "Search",
+    "filters": "Filters",
+    "placeholder": "Search expenses...",
+    "no_results": "No expenses found"
+  },
+  "stats": {
+    "title": "Statistics",
+    "by_category": "Expenses by category",
+    "by_person": "Expenses by person",
+    "over_time": "Spending over time",
+    "total_spent": "Total spent",
+    "average_expense": "Average expense",
+    "no_data": "No data available for the selected period"
+  },
   "bank_transactions": {
     "choose_bank_provider": "Choose bank provider",
     "select_bank_provider": "Select bank provider",
@@ -186,6 +228,9 @@
       "success": "Expense moved to the group",
       "no_groups": "No other groups contain all participants"
     },
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "muted": "Muted",
     "add_expense_details": {
       "add_new_expense": "Add new expense",
       "amount_placeholder": "Enter amount",

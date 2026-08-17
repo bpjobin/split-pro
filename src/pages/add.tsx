@@ -39,6 +39,7 @@ const AddPage: NextPageWithUser<{
     setCronExpression,
     setFileKey,
     applySplitPreset,
+    setItems,
   } = useAddExpenseStore((s) => s.actions);
   const currentUser = useAddExpenseStore((s) => s.currentUser);
   const initializedGroupIdRef = useRef<number | null>(null);
@@ -235,6 +236,16 @@ const AddPage: NextPageWithUser<{
     if (expenseQuery.data.fileKey) {
       setFileKey(expenseQuery.data.fileKey);
     }
+    if (expenseQuery.data.items && expenseQuery.data.items.length > 0) {
+      setItems(
+        expenseQuery.data.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          amount: item.amount,
+          excluded: item.excluded,
+        })),
+      );
+    }
   }, [
     _expenseId,
     _friendId,
@@ -261,6 +272,7 @@ const AddPage: NextPageWithUser<{
     setFileKey,
     getCurrencyHelpersCached,
     t,
+    setItems,
   ]);
 
   return (

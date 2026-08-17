@@ -37,6 +37,8 @@ import { CurrencyConversion } from '../Friend/CurrencyConversion';
 import { currencyConversion } from '~/utils/numbers';
 import { CurrencyConversionIcon } from '../ui/categoryIcons';
 import { useSession } from 'next-auth/react';
+import { ExpenseItems } from './ExpenseItems';
+import { ScanReceiptButton } from './ScanReceiptButton';
 
 export const AddOrEditExpensePage: React.FC<{
   enableSendingInvites: boolean;
@@ -64,6 +66,7 @@ export const AddOrEditExpensePage: React.FC<{
   const transactionId = useAddExpenseStore((s) => s.transactionId);
   const cronExpression = useAddExpenseStore((s) => s.cronExpression);
   const multipleTransactions = useAddExpenseStore((s) => s.multipleTransactions);
+  const items = useAddExpenseStore((s) => s.items);
 
   const { t, displayName, generateSplitDescription, getCurrencyHelpersCached } =
     useTranslationWithUtils();
@@ -126,6 +129,16 @@ export const AddOrEditExpensePage: React.FC<{
 
     const sign = isNegative ? -1n : 1n;
 
+    // Prepare items with sign applied
+    const expenseItems =
+      items.length > 0
+        ? items.map((item) => ({
+            name: item.name,
+            amount: item.amount * sign,
+            excluded: item.excluded,
+          }))
+        : undefined;
+
     try {
       await addExpenseMutation.mutateAsync(
         [
@@ -147,6 +160,7 @@ export const AddOrEditExpensePage: React.FC<{
             transactionId,
             note,
             cronExpression: cronExpression ? cronToBackend(cronExpression) : undefined,
+            items: expenseItems,
           },
         ],
         {
@@ -223,6 +237,7 @@ export const AddOrEditExpensePage: React.FC<{
     multipleTransactions,
     setSingleTransaction,
     update,
+    items,
   ]);
 
   const addExpenseAndAnother = useCallback(async () => {
@@ -253,6 +268,14 @@ export const AddOrEditExpensePage: React.FC<{
           expenseDate,
           note,
           cronExpression: cronExpression ? cronToBackend(cronExpression) : undefined,
+          items:
+            items.length > 0
+              ? items.map((item) => ({
+                  name: item.name,
+                  amount: item.amount * sign,
+                  excluded: item.excluded,
+                }))
+              : undefined,
         },
       ]);
       resetForAnother();
@@ -285,6 +308,7 @@ export const AddOrEditExpensePage: React.FC<{
     setMultipleTransactions,
     setIsTransactionLoading,
     t,
+    items,
   ]);
 
   const handleDescriptionChange = useCallback(
@@ -399,6 +423,7 @@ export const AddOrEditExpensePage: React.FC<{
               hideSymbol
               onValueChange={onUpdateAmount}
               rightIcon={currencyConversionComponent}
+              disabled={items.length > 0}
             />
           </div>
           <Input
@@ -407,6 +432,7 @@ export const AddOrEditExpensePage: React.FC<{
             onChange={(e) => setNote(e.target.value)}
             className="text-sm placeholder:text-sm"
           />
+          <ExpenseItems />
           <div className="h-[180px]">
             {amount && '' !== description ? (
               <>
@@ -446,6 +472,7 @@ export const AddOrEditExpensePage: React.FC<{
                   />
                   <div className="flex items-center gap-2">
                     <UploadFile />
+                    <ScanReceiptButton fileKey={fileKey} />
                     {!expenseId && (
                       <Button
                         variant="secondary"

@@ -205,6 +205,7 @@ model Expense {
   expenseParticipants ExpenseParticipant[]
   expensePayments     ExpensePayment[]
   tags                ExpenseTag[]
+  items               ExpenseItem[]
 
   @@index([groupId])
   @@index([paidBy])
@@ -258,6 +259,19 @@ model ExpenseTag {
   tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([expenseId, tagId])
+  @@schema("public")
+}
+
+model ExpenseItem {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  expenseId String   @db.Uuid
+  name      String
+  amount    BigInt
+  excluded  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expense   Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
   @@schema("public")
 }
 
