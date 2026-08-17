@@ -25,6 +25,14 @@ services:
     ports:
       - '${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}'
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: splitpro-mailpit
+    restart: always
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
 volumes:
   database:
   uploads:

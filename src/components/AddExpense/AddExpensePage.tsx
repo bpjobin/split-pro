@@ -99,18 +99,13 @@ export const AddOrEditExpensePage: React.FC<{
   const syncTags = useCallback(
     async (savedExpenseId: string) => {
       const desired = new Set(selectedTagIds);
-
-      if (!existingTagIdsRef.current) {
-        existingTagIdsRef.current = desired;
-        return;
-      }
-
-      const existing = existingTagIdsRef.current;
+      const existing = existingTagIdsRef.current ?? new Set<string>();
 
       const toAdd = [...desired].filter((id) => !existing.has(id));
       const toRemove = [...existing].filter((id) => !desired.has(id));
 
       if (toAdd.length === 0 && toRemove.length === 0) {
+        existingTagIdsRef.current = desired;
         return;
       }
 
