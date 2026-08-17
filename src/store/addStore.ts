@@ -18,6 +18,12 @@ export interface ExpenseItemInput {
   excluded: boolean;
 }
 
+export interface ExpenseTagInput {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface AddExpenseState {
   amount: bigint;
   amountStr: string;
@@ -44,6 +50,7 @@ export interface AddExpenseState {
   multipleTransactions: TransactionAddInputModel[];
   isTransactionLoading: boolean;
   items: ExpenseItemInput[];
+  selectedTagIds: string[];
   actions: {
     setAmount: (amount: bigint) => void;
     setAmountStr: (amountStr: string) => void;
@@ -81,6 +88,7 @@ export interface AddExpenseState {
     ) => void;
     toggleItemExcluded: (id: string) => void;
     setItems: (items: ExpenseItemInput[]) => void;
+    setSelectedTagIds: (tagIds: string[]) => void;
   };
 }
 
@@ -113,6 +121,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
   isTransactionLoading: false,
   cronExpression: '',
   items: [],
+  selectedTagIds: [],
   actions: {
     setAmount: (realAmount) =>
       set((s) => {
@@ -266,6 +275,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         isFileUploading: false,
         paidBy: s.currentUser,
         items: [],
+        selectedTagIds: [],
       }));
     },
     resetForAnother: () => {
@@ -286,6 +296,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         isFileUploading: false,
         participants: s.participants.map((p) => ({ ...p, amount: undefined })),
         items: [],
+        selectedTagIds: [],
       }));
     },
     setSplitScreenOpen: (splitScreenOpen) => set({ splitScreenOpen }),
@@ -334,6 +345,7 @@ export const useAddExpenseStore = create<AddExpenseState>()((set) => ({
         ),
       })),
     setItems: (items) => set({ items }),
+    setSelectedTagIds: (selectedTagIds) => set({ selectedTagIds }),
   },
 }));
 

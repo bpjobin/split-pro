@@ -40,6 +40,7 @@ const AddPage: NextPageWithUser<{
     setFileKey,
     applySplitPreset,
     setItems,
+    setSelectedTagIds,
   } = useAddExpenseStore((s) => s.actions);
   const currentUser = useAddExpenseStore((s) => s.currentUser);
   const initializedGroupIdRef = useRef<number | null>(null);
@@ -246,6 +247,9 @@ const AddPage: NextPageWithUser<{
         })),
       );
     }
+    if (expenseQuery.data.tags) {
+      setSelectedTagIds(expenseQuery.data.tags.map((et) => et.tag.id));
+    }
   }, [
     _expenseId,
     _friendId,
@@ -273,6 +277,7 @@ const AddPage: NextPageWithUser<{
     getCurrencyHelpersCached,
     t,
     setItems,
+    setSelectedTagIds,
   ]);
 
   return (

@@ -38,6 +38,7 @@ import { currencyConversion } from '~/utils/numbers';
 import { CurrencyConversionIcon } from '../ui/categoryIcons';
 import { useSession } from 'next-auth/react';
 import { ExpenseItems } from './ExpenseItems';
+import { AddExpenseTagPicker } from './AddExpenseTagPicker';
 
 export const AddOrEditExpensePage: React.FC<{
   enableSendingInvites: boolean;
@@ -66,6 +67,8 @@ export const AddOrEditExpensePage: React.FC<{
   const cronExpression = useAddExpenseStore((s) => s.cronExpression);
   const multipleTransactions = useAddExpenseStore((s) => s.multipleTransactions);
   const items = useAddExpenseStore((s) => s.items);
+  const selectedTagIds = useAddExpenseStore((s) => s.selectedTagIds);
+  const setSelectedTagIds = useAddExpenseStore((s) => s.actions.setSelectedTagIds);
 
   const { t, displayName, generateSplitDescription, getCurrencyHelpersCached } =
     useTranslationWithUtils();
@@ -87,7 +90,41 @@ export const AddOrEditExpensePage: React.FC<{
 
   const addExpenseMutation = api.expense.addOrEditExpense.useMutation();
   const updateProfile = api.user.updateUserDetail.useMutation();
+  const addTagMutation = api.tag.addTagToExpense.useMutation();
+  const removeTagMutation = api.tag.removeTagFromExpense.useMutation();
   const { update } = useSession();
+
+  const existingTagIdsRef = React.useRef<Set<string> | null>(null);
+
+  const syncTags = useCallback(
+    async (savedExpenseId: string) => {
+      const desired = new Set(selectedTagIds);
+
+      if (!existingTagIdsRef.current) {
+        existingTagIdsRef.current = desired;
+        return;
+      }
+
+      const existing = existingTagIdsRef.current;
+
+      const toAdd = [...desired].filter((id) => !existing.has(id));
+      const toRemove = [...existing].filter((id) => !desired.has(id));
+
+      if (toAdd.length === 0 && toRemove.length === 0) {
+        return;
+      }
+
+      await Promise.all([
+        ...toAdd.map((tagId) => addTagMutation.mutateAsync({ expenseId: savedExpenseId, tagId })),
+        ...toRemove.map((tagId) =>
+          removeTagMutation.mutateAsync({ expenseId: savedExpenseId, tagId }),
+        ),
+      ]);
+
+      existingTagIdsRef.current = desired;
+    },
+    [selectedTagIds, addTagMutation, removeTagMutation],
+  );
 
   const onCurrencyPick = useCallback(
     (newCurrency: CurrencyCode | null) => {
@@ -176,6 +213,10 @@ export const AddOrEditExpensePage: React.FC<{
               } else {
                 const id = d.length > 0 ? d[0]?.id : expenseId;
 
+                if (id) {
+                  syncTags(id).catch(console.error);
+                }
+
                 let navPromise: () => Promise<any> = () => Promise.resolve(true);
 
                 const { friendId, groupId } = router.query;
@@ -237,6 +278,7 @@ export const AddOrEditExpensePage: React.FC<{
     setSingleTransaction,
     update,
     items,
+    syncTags,
   ]);
 
   const addExpenseAndAnother = useCallback(async () => {
@@ -250,7 +292,7 @@ export const AddOrEditExpensePage: React.FC<{
     const sign = isNegative ? -1n : 1n;
 
     try {
-      await addExpenseMutation.mutateAsync([
+      const result = await addExpenseMutation.mutateAsync([
         {
           name: description,
           currency,
@@ -277,6 +319,10 @@ export const AddOrEditExpensePage: React.FC<{
               : undefined,
         },
       ]);
+      const savedId = result?.[0]?.id;
+      if (savedId) {
+        syncTags(savedId).catch(console.error);
+      }
       resetForAnother();
       window.scrollTo({ top: 0, behavior: 'smooth' });
       toast.success(t('expense_details.add_expense_details.add_new_expense'));
@@ -308,6 +354,7 @@ export const AddOrEditExpensePage: React.FC<{
     setIsTransactionLoading,
     t,
     items,
+    syncTags,
   ]);
 
   const handleDescriptionChange = useCallback(
@@ -431,6 +478,7 @@ export const AddOrEditExpensePage: React.FC<{
             onChange={(e) => setNote(e.target.value)}
             className="text-sm placeholder:text-sm"
           />
+          <AddExpenseTagPicker />
           <ExpenseItems />
           <div className="h-[180px]">
             {amount && '' !== description ? (
