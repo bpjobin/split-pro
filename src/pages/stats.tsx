@@ -19,6 +19,7 @@ interface StatsFilters {
 
 const StatsPage: NextPageWithUser = () => {
   const { t, getCurrencyHelpersCached } = useTranslationWithUtils();
+  const { toUIString } = getCurrencyHelpersCached('USD');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<StatsFilters>({
     dateFrom: '',
@@ -132,17 +133,36 @@ const StatsPage: NextPageWithUser = () => {
               />
             )}
 
-            <div className="rounded-xl border p-4">
-              <h3 className="mb-3 text-lg font-medium">{t('stats.over_time')}</h3>
-              <div className="flex flex-col gap-2">
-                {data.byMonth.map((item) => (
-                  <div key={item.month} className="flex items-center justify-between">
-                    <span className="text-sm">{item.month}</span>
-                    <span className="text-sm text-gray-500">{item.count}</span>
-                  </div>
-                ))}
+            {data.byMonth.length > 0 && (
+              <div className="rounded-xl border p-4">
+                <h3 className="mb-3 text-lg font-medium">{t('stats.over_time')}</h3>
+                <div className="flex flex-col gap-2">
+                  {(() => {
+                    const maxTotal = Math.max(...data.byMonth.map((m) => Number(m.total)));
+                    return data.byMonth.map((item) => {
+                      const pct = maxTotal > 0 ? (Number(item.total) / maxTotal) * 100 : 0;
+                      return (
+                        <div key={item.month} className="flex items-center gap-3">
+                          <span className="w-16 shrink-0 text-xs text-gray-500">{item.month}</span>
+                          <div className="h-4 flex-1 overflow-hidden rounded bg-gray-100">
+                            <div
+                              className="h-full rounded bg-blue-500 transition-all"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          <span className="w-20 shrink-0 text-right text-xs font-medium">
+                            {toUIString(item.total)}
+                          </span>
+                          <span className="w-6 shrink-0 text-right text-xs text-gray-400">
+                            {item.count}
+                          </span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </MainLayout>

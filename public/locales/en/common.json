@@ -217,7 +217,9 @@
     "all_groups": "All groups",
     "paid_by": "Paid by",
     "anyone": "Anyone",
-    "tags": "Tags"
+    "tags": "Tags",
+    "monthly_expenses": "{{count}} expense",
+    "monthly_expenses_plural": "{{count}} expenses"
   },
   "bank_transactions": {
     "choose_bank_provider": "Choose bank provider",
@@ -488,6 +490,10 @@
     "template_delete_warning": "This is a recurring expense template. Deleting it will stop all future recurring expenses.",
     "derived_delete_warning": "This expense is part of a recurrence. Only this expense will be deleted. Future recurring expenses will continue.",
     "view_recurring_page": "View Recurring page"
+  },
+  "expense_list": {
+    "search_placeholder": "Filter expenses...",
+    "no_match": "No expenses match your filter"
   },
   "ui": {
     "added_by": "Added by",

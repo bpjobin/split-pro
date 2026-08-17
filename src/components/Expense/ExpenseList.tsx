@@ -1,10 +1,10 @@
 import { SplitType } from '@prisma/client';
 import { type inferRouterOutputs } from '@trpc/server';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Search, SlidersHorizontal, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { CategoryIcon, CurrencyConversionIcon, SettleupIcon } from '~/components/ui/categoryIcons';
 import { useTranslationWithUtils } from '~/hooks/useTranslationWithUtils';
@@ -32,10 +32,143 @@ export const ExpenseList: React.FC<{
   isGroup?: boolean;
   isLoading?: boolean;
 }> = ({ userId, isGroup = false, expenses = [], contactId, isLoading }) => {
+  const { t } = useTranslationWithUtils();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+
+  const { data: allTags } = api.tag.getUserTags.useQuery();
+
+  const filteredExpenses = useMemo(() => {
+    if (!expenses) {
+      return expenses;
+    }
+    let result = expenses;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (e) => e.name.toLowerCase().includes(q) || e.paidByUser.name?.toLowerCase().includes(q),
+      ) as ExpensesOutput;
+    }
+
+    if (selectedTagIds.length > 0) {
+      result = result.filter((e) => {
+        if (!('tags' in e) || !e.tags) {
+          return false;
+        }
+        return selectedTagIds.some((tagId) =>
+          e.tags.some((t: { tag: { id: string } }) => t.tag.id === tagId),
+        );
+      }) as ExpensesOutput;
+    }
+
+    return result;
+  }, [expenses, searchQuery, selectedTagIds]);
+
+  const toggleTag = useCallback((tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId],
+    );
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setSearchQuery('');
+    setSelectedTagIds([]);
+  }, []);
+
   if (!isLoading && expenses.length === 0) {
     return <NoExpenses />;
   }
 
+  const hasFilters = searchQuery.trim().length > 0 || selectedTagIds.length > 0;
+
+  if (!isLoading && expenses.length > 0) {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('expense_list.search_placeholder')}
+              className="w-full rounded-md border bg-transparent py-1.5 pr-3 pl-9 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'rounded-md border p-1.5 transition-colors',
+              showFilters || selectedTagIds.length > 0
+                ? 'border-blue-500 bg-blue-50 text-blue-600'
+                : 'text-gray-400 hover:text-gray-600',
+            )}
+          >
+            <SlidersHorizontal className="size-4" />
+          </button>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="rounded-md p-1.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+
+        {showFilters && allTags && allTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 rounded-md border p-2">
+            {allTags.map((tag) => (
+              <button
+                key={tag.id}
+                type="button"
+                onClick={() => toggleTag(tag.id)}
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
+                  selectedTagIds.includes(tag.id)
+                    ? 'text-white'
+                    : 'text-gray-700 hover:bg-gray-100',
+                )}
+                style={{
+                  backgroundColor: selectedTagIds.includes(tag.id) ? tag.color : undefined,
+                }}
+              >
+                <div className="size-1.5 rounded-full" style={{ backgroundColor: tag.color }} />
+                {tag.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {filteredExpenses.length === 0 && (
+          <p className="py-8 text-center text-sm text-gray-500">{t('expense_list.no_match')}</p>
+        )}
+
+        <ExpenseListInner
+          userId={userId}
+          expenses={filteredExpenses}
+          contactId={contactId}
+          isGroup={isGroup}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <ExpenseListInner userId={userId} expenses={expenses} contactId={contactId} isGroup={isGroup} />
+  );
+};
+
+const ExpenseListInner: React.FC<{
+  userId: number;
+  expenses: ExpensesOutput;
+  contactId: number;
+  isGroup: boolean;
+}> = ({ userId, isGroup = false, expenses = [], contactId }) => {
   const { i18n } = useTranslationWithUtils();
 
   let lastDate: Date | null = null;
