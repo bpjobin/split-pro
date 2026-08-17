@@ -27,6 +27,15 @@ See [docker/README.md](docker/README.md) and [docs/CONFIGURATION.md](docs/CONFIG
 - PWA support with push notifications.
 - Activity feed with edits and deletions.
 - Detailed balances per person and per group.
+- Multi-payer support with per-payer balance tracking.
+- Expense line items for itemized receipts with automatic total sync.
+- Tags with colors for organizing and filtering expenses.
+- Search expenses by keyword and tag filters.
+- AI receipt scanning with OpenAI-compatible providers.
+- CSV import with column mapping and downloadable templates.
+- Bulk add expenses and save-and-add-another flow.
+- Move expenses between groups.
+- Mute group notifications.
 
 ## UI preview
 
@@ -40,7 +49,7 @@ See [docker/README.md](docker/README.md) and [docs/CONFIGURATION.md](docs/CONFIG
 
 ### 1) Expenses, balances, and activity
 
-Create expenses with categories, currencies, dates, and receipt attachments. SplitPro supports negative expenses for refunds and corrections. View per-person balances, detailed group balances, and an activity feed that includes edits and deletions.
+Create expenses with categories, currencies, dates, and receipt attachments. SplitPro supports negative expenses for refunds and corrections, multi-payer tracking, and expense line items for itemized receipts. View per-person balances, detailed group balances, and an activity feed that includes edits and deletions.
 
 ### 2) Application info
 
@@ -48,11 +57,15 @@ SplitPro is a PWA and that is the recommended way to use the app. It supports pu
 
 ### 3) Groups
 
-Groups are the primary way to use SplitPro. You can invite friends by email, or add them directly if they are already in your friends list. Group debt simplification is optional, and the group balance view provides a detailed breakdown.
+Groups are the primary way to use SplitPro. You can invite friends by email, or add them directly if they are already in your friends list. Group debt simplification is optional, and the group balance view provides a detailed breakdown. You can move expenses between groups and mute group notifications.
+
+### 3.1) Tags, search, and AI receipt scanning
+
+Tag expenses with custom colors for easy organization. Search expenses by keyword and filter by tags. AI receipt scanning uses an OpenAI-compatible API (e.g., self-hosted Qwen) to extract expense details from receipt images — configure `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, and `AI_ENABLED` in your `.env` file.
 
 ### 4) Data utilities
 
-Splitwise import supports friends and groups (partial import). Expenses themselves are not imported yet. You can export data from the balances view and account settings.
+Splitwise import supports friends and groups (partial import). CSV import allows you to bulk add expenses from a spreadsheet with column mapping and downloadable templates. You can export data from the balances view and account settings.
 
 ### 5) Translations
 
