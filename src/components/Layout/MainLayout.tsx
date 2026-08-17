@@ -1,4 +1,5 @@
 import {
+  ChartBarIcon as SolidChartBarIcon,
   ListBulletIcon as SolidListBulletIcon,
   MagnifyingGlassIcon as SolidMagnifyingGlassIcon,
   PlusCircleIcon as SolidPlusCircleIcon,
@@ -80,6 +81,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             currentPath={currentPath}
           />
           <NavItemDesktop
+            title={t?.('stats.title') ?? 'Stats'}
+            Icon={SolidChartBarIcon}
+            link="/stats"
+            currentPath={currentPath}
+          />
+          <NavItemDesktop
             title={t?.('navigation.account') ?? 'Account'}
             Icon={SolidUserCircleIcon}
             link="/account"
@@ -138,6 +145,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           title={t?.('search.placeholder') ?? 'Search'}
           Icon={SolidMagnifyingGlassIcon}
           link="/search"
+          currentPath={currentPath}
+        />
+        <NavItem
+          title={t?.('stats.title') ?? 'Stats'}
+          Icon={SolidChartBarIcon}
+          link="/stats"
           currentPath={currentPath}
         />
         <NavItem

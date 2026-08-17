@@ -694,91 +694,129 @@ export const expenseRouter = createTRPCRouter({
       return { rates };
     }),
 
-  getStats: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  getStats: protectedProcedure
+    .input(
+      z
+        .object({
+          dateFrom: z.date().optional(),
+          dateTo: z.date().optional(),
+          groupId: z.number().optional(),
+          paidByUserId: z.number().optional(),
+          tagIds: z.array(z.string()).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
 
-    const expenses = await db.expense.findMany({
-      where: {
+      const where: Record<string, unknown> = {
         deletedAt: null,
         expenseParticipants: {
           some: { userId },
         },
-      },
-      include: {
-        expenseParticipants: true,
-        paidByUser: {
-          select: { id: true, name: true },
-        },
-        tags: {
-          include: { tag: true },
-        },
-      },
-      orderBy: { expenseDate: 'desc' },
-    });
-
-    const byCategory: Record<string, { total: bigint; count: number }> = {};
-    const byPerson: Record<number, { total: bigint; count: number; name: string }> = {};
-    const byMonth: Record<string, { total: bigint; count: number }> = {};
-    const byTag: Record<string, { total: bigint; count: number; name: string; color: string }> = {};
-
-    let totalSpent = 0n;
-    let totalExpenses = 0;
-
-    for (const expense of expenses) {
-      totalSpent += expense.amount;
-      totalExpenses++;
-
-      byCategory[expense.category] = {
-        total: (byCategory[expense.category]?.total ?? 0n) + expense.amount,
-        count: (byCategory[expense.category]?.count ?? 0) + 1,
       };
 
-      const paidById = expense.paidBy;
-      if (!byPerson[paidById]) {
-        byPerson[paidById] = {
-          total: 0n,
-          count: 0,
-          name: expense.paidByUser?.name ?? 'Unknown',
+      if (input?.dateFrom || input?.dateTo) {
+        where.expenseDate = {
+          ...(input.dateFrom ? { gte: input.dateFrom } : {}),
+          ...(input.dateTo ? { lte: input.dateTo } : {}),
         };
       }
-      byPerson[paidById].total += expense.amount;
-      byPerson[paidById].count++;
 
-      const monthKey = expense.expenseDate.toISOString().slice(0, 7);
-      byMonth[monthKey] = {
-        total: (byMonth[monthKey]?.total ?? 0n) + expense.amount,
-        count: (byMonth[monthKey]?.count ?? 0) + 1,
-      };
+      if (input?.groupId) {
+        where.groupId = input.groupId;
+      }
 
-      for (const { tag } of expense.tags) {
-        const existing = byTag[tag.id];
-        if (!existing) {
-          byTag[tag.id] = { total: expense.amount, count: 1, name: tag.name, color: tag.color };
-        } else {
-          existing.total += expense.amount;
-          existing.count++;
+      if (input?.paidByUserId) {
+        where.paidBy = input.paidByUserId;
+      }
+
+      if (input?.tagIds && input.tagIds.length > 0) {
+        where.tags = {
+          some: {
+            tagId: { in: input.tagIds },
+          },
+        };
+      }
+
+      const expenses = await db.expense.findMany({
+        where,
+        include: {
+          expenseParticipants: true,
+          paidByUser: {
+            select: { id: true, name: true },
+          },
+          tags: {
+            include: { tag: true },
+          },
+        },
+        orderBy: { expenseDate: 'desc' },
+      });
+
+      const byCategory: Record<string, { total: bigint; count: number }> = {};
+      const byPerson: Record<number, { total: bigint; count: number; name: string }> = {};
+      const byMonth: Record<string, { total: bigint; count: number }> = {};
+      const byTag: Record<string, { total: bigint; count: number; name: string; color: string }> =
+        {};
+
+      let totalSpent = 0n;
+      let totalExpenses = 0;
+
+      for (const expense of expenses) {
+        totalSpent += expense.amount;
+        totalExpenses++;
+
+        byCategory[expense.category] = {
+          total: (byCategory[expense.category]?.total ?? 0n) + expense.amount,
+          count: (byCategory[expense.category]?.count ?? 0) + 1,
+        };
+
+        const paidById = expense.paidBy;
+        if (!byPerson[paidById]) {
+          byPerson[paidById] = {
+            total: 0n,
+            count: 0,
+            name: expense.paidByUser?.name ?? 'Unknown',
+          };
+        }
+        byPerson[paidById].total += expense.amount;
+        byPerson[paidById].count++;
+
+        const monthKey = expense.expenseDate.toISOString().slice(0, 7);
+        byMonth[monthKey] = {
+          total: (byMonth[monthKey]?.total ?? 0n) + expense.amount,
+          count: (byMonth[monthKey]?.count ?? 0) + 1,
+        };
+
+        for (const { tag } of expense.tags) {
+          const existing = byTag[tag.id];
+          if (!existing) {
+            byTag[tag.id] = { total: expense.amount, count: 1, name: tag.name, color: tag.color };
+          } else {
+            existing.total += expense.amount;
+            existing.count++;
+          }
         }
       }
-    }
 
-    return {
-      totalSpent,
-      totalExpenses,
-      averageExpense: totalExpenses > 0 ? totalSpent / BigInt(totalExpenses) : 0n,
-      byCategory: Object.entries(byCategory)
-        .map(([category, data]) => ({ category, ...data }))
-        .sort((a, b) => (a.total > b.total ? -1 : 1)),
-      byPerson: Object.entries(byPerson)
-        .map(([id, data]) => ({ userId: Number(id), ...data }))
-        .sort((a, b) => (a.total > b.total ? -1 : 1)),
-      byMonth: Object.entries(byMonth)
-        .map(([month, data]) => ({ month, ...data }))
-        .sort((a, b) => a.month.localeCompare(b.month)),
-      byTag: Object.entries(byTag)
-        .map(([id, data]) => ({ tagId: id, ...data }))
-        .sort((a, b) => (a.total > b.total ? -1 : 1)),
-    };
-  }),
+      return {
+        totalSpent,
+        totalExpenses,
+        averageExpense: totalExpenses > 0 ? totalSpent / BigInt(totalExpenses) : 0n,
+        byCategory: Object.entries(byCategory)
+          .map(([category, data]) => Object.assign({ category }, data))
+          .sort((a, b) => (a.total > b.total ? -1 : 1)),
+        byPerson: Object.entries(byPerson)
+          .map(([id, data]) => Object.assign({ userId: Number(id) }, data))
+          .sort((a, b) => (a.total > b.total ? -1 : 1)),
+        byMonth: Object.entries(byMonth)
+          .map(([month, data]) => Object.assign({ month }, data))
+          .sort((a, b) => a.month.localeCompare(b.month)),
+        byTag: Object.entries(byTag)
+          .map(([id, data]) => Object.assign({ tagId: id }, data))
+          .sort((a, b) => (a.total > b.total ? -1 : 1)),
+      };
+    }),
 
   addItemsToExpense: protectedProcedure
     .input(

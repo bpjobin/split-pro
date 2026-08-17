@@ -208,7 +208,16 @@
     "over_time": "Spending over time",
     "total_spent": "Total spent",
     "average_expense": "Average expense",
-    "no_data": "No data available for the selected period"
+    "no_data": "No data available for the selected period",
+    "filters": "Filters",
+    "clear_filters": "Clear all",
+    "date_from": "From",
+    "date_to": "To",
+    "group": "Group",
+    "all_groups": "All groups",
+    "paid_by": "Paid by",
+    "anyone": "Anyone",
+    "tags": "Tags"
   },
   "bank_transactions": {
     "choose_bank_provider": "Choose bank provider",
