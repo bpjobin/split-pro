@@ -22,7 +22,7 @@ pnpm dx:down       # Stop Docker containers
 - use a separate postgres instance per worktree (different host port + db name)
   - set unique values in the worktree `.env`: `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_CONTAINER_NAME`, `DATABASE_URL`
   - start dedicated db container, for example:
-    - `docker run -d --name <unique-container-name> -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=strong-password -e POSTGRES_DB=<worktree-db> -p <worktree-port>:5432 ossapps/postgres:17.7-trixie postgres -c shared_preload_libraries=pg_cron -c cron.database_name=<worktree-db> -c cron.timezone=UTC`
+    - `docker run -d --name <unique-container-name> -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=strong-password -e POSTGRES_DB=<worktree-db> -p <worktree-port>:5432 ossapps/postgres:18.3-trixie postgres -c shared_preload_libraries=pg_cron -c cron.database_name=<worktree-db> -c cron.timezone=UTC`
   - enable pg_cron extension once: `psql "postgresql://postgres:strong-password@localhost:<worktree-port>/<worktree-db>" -c "CREATE EXTENSION IF NOT EXISTS pg_cron;"`
   - initialize schema and data: `pnpm exec prisma migrate reset --force --skip-seed && pnpm db:seed`
 
@@ -44,6 +44,8 @@ pnpm test:watch                        # Run tests in watch mode
 pnpm test src/tests/simplify.test.ts   # Run a specific test file
 pnpm test -- -t "test name pattern"    # Run tests matching pattern
 ```
+
+Tests live in `src/tests/`. `jest.config.ts` registers `BigInt.prototype.toJSON` so BigInt values serialize in assertions; nothing else special is required.
 
 ### Linting & Formatting
 
@@ -99,6 +101,7 @@ pnpm build         # Build for production
 - Server-side vars: Use `env.VAR_NAME` (available only on server).
 - Client-side vars: Use `env.NEXT_PUBLIC_VAR_NAME` (exposed to browser, prefixed with `NEXT_PUBLIC_`).
 - Defaults: Hardcode in `src/env.ts` using Zod `.default()` for fallback values.
+- `SKIP_ENV_VALIDATION=true` bypasses env validation (used by CI and Docker builds; useful when running tooling without a `.env`).
 
 ```typescript
 import { HeartHandshakeIcon, X } from 'lucide-react';
@@ -260,6 +263,7 @@ describe('functionName', () => {
 - **Transaction batching**: Use `db.$transaction(operations)` for expense mutations
 - **Split types**: `EQUAL`, `PERCENTAGE`, `SHARE`, `EXACT`, `ADJUSTMENT`, `SETTLEMENT`, `CURRENCY_CONVERSION`
 - **Schema typo**: `firendId` (not `friendId`) in GroupBalance - maintain for consistency
+- **Prisma external tables**: `cron.job` / `cron.job_run_details` (pg_cron, recurring expenses) are declared as external tables in `prisma.config.ts`, so they are not part of Prisma migrations
 
 ## Typescript Migrations
 
@@ -302,6 +306,7 @@ export async function myMigrationFunction(): Promise<void> {
 ### Key Points
 
 - Migrations run on every server start but are idempotent (version check)
+- With `DOCKER_OUTPUT=true`, the runner also executes `prisma migrate deploy` first via `src/migrations/programmatic-prisma.ts`
 - Use the shared `db` connection from `~/server/db`
 - Wrap related operations in `db.$transaction()` for atomicity
 - Log progress for visibility during deployment

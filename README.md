@@ -3,35 +3,68 @@
   <img width="100px"  style="border-radius: 50%;" src="https://splitpro.app/logo_circle.png" alt="SplitPro Logo">
   </a>
 
-  <h1 align="center">SplitPro</h1>
-  <h2 align="center">An open source alternative to Splitwise</h2>
+  <h1 align="center">SplitPro (Enhanced Fork)</h1>
+  <h2 align="center">Open source expense splitting — with line items, tags, AI receipt scanning, and more</h2>
 
-## About
+## What this fork adds
 
-SplitPro is a self-hosted, open source way to share expenses with friends. It is designed as a replacement for Splitwise.
+This is a maintained fork of [oss-apps/split-pro](https://github.com/oss-apps/split-pro) with the features below. If you just want the basics, use the original. If you want itemized receipts, tag-based filtering, inline search, and AI-powered receipt scanning, use this.
+
+| Feature                           | Upstream    | This fork                                                                                                                      |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Expense line items                | —           | Add/remove/edit items per expense. Excluded items don't affect balance. Expense total auto-syncs from included items.          |
+| Tags with colors                  | —           | Create tags, assign to expenses, filter by tag across stats, search, and expense lists.                                        |
+| AI receipt scanning               | —           | Scan a receipt image → extract line items automatically. Works with any OpenAI-compatible API (GPT-4o, self-hosted Qwen, etc). |
+| Search & filter                   | —           | Dedicated search page + inline search bar in group/friend expense views. Filter by keyword and tags.                           |
+| Stats with filters                | Basic stats | Filter stats by date range, group, payer, and tags. Bar chart for monthly spending.                                            |
+| Inline expense filtering          | —           | Search and tag filter chips directly in group and friend expense lists.                                                        |
+| Scan receipt on existing expenses | —           | Re-scan a receipt on any existing expense to append new line items.                                                            |
+| Expense items in detail view      | —           | See line items (with excluded indicator) on the expense detail page.                                                           |
+
+**Everything from upstream is preserved.** Groups, balances, settlements, currency conversion, recurring expenses, bank integrations, PWA, and Splitwise import all work unchanged.
 
 ## Quick start
 
-1. Use Docker Compose from [docker/prod/compose.yml](docker/prod/compose.yml).
-2. Copy `.env.example` to `.env` and configure auth, database, and uploads.
-3. Start the stack and log in to create your first account.
+```bash
+docker run -d \
+  --name splitpro \
+  -e DATABASE_URL="postgresql://user:pass@db:5432/splitpro" \
+  -e NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
+  -e NEXTAUTH_URL="http://localhost:3000" \
+  -e SKIP_ENV_VALIDATION=true \
+  -p 3000:3000 \
+  bpjobin/split-pro:latest
+```
 
-See [docker/README.md](docker/README.md) and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full setup steps.
+Or use Docker Compose from [docker/prod/compose.yml](docker/prod/compose.yml). Copy `.env.example` to `.env` and configure auth, database, and uploads. See [docker/README.md](docker/README.md) and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for the full setup steps.
+
+### Enabling AI receipt scanning
+
+Add these to your `.env`:
+
+```
+AI_BASE_URL=https://your-api-provider.com
+AI_API_KEY=your-key
+AI_MODEL=gpt-4o
+AI_ENABLED=true
+```
+
+Works with OpenAI, Ollama, vLLM, or any OpenAI-compatible endpoint.
 
 ## Core features
 
 - Add expenses with a friend or a group.
 - Split methods: equal, percentage, share, exact, adjustments, and settlements.
 - Categories, currencies, dates, and receipt attachments (stored locally).
-- Negative expenses are supported for refunds and corrections.
-- PWA support with push notifications.
+- Negative expenses for refunds and corrections.
+- PWA with push notifications.
 - Activity feed with edits and deletions.
 - Detailed balances per person and per group.
 - Multi-payer support with per-payer balance tracking.
-- Expense line items for itemized receipts with automatic total sync.
-- Tags with colors for organizing and filtering expenses.
-- Search expenses by keyword and tag filters.
-- AI receipt scanning with OpenAI-compatible providers.
+- **Expense line items** for itemized receipts with automatic total sync.
+- **Tags with colors** for organizing and filtering expenses.
+- **Search** expenses by keyword and tag filters (dedicated page + inline in group/friend views).
+- **AI receipt scanning** with OpenAI-compatible providers.
 - CSV import with column mapping and downloadable templates.
 - Bulk add expenses and save-and-add-another flow.
 - Move expenses between groups.
@@ -47,31 +80,33 @@ See [docker/README.md](docker/README.md) and [docs/CONFIGURATION.md](docs/CONFIG
 
 ## Usage overview
 
-### 1) Expenses, balances, and activity
+### Expenses, balances, and activity
 
 Create expenses with categories, currencies, dates, and receipt attachments. SplitPro supports negative expenses for refunds and corrections, multi-payer tracking, and expense line items for itemized receipts. View per-person balances, detailed group balances, and an activity feed that includes edits and deletions.
 
-### 2) Application info
+### Tags, search, and AI receipt scanning
 
-SplitPro is a PWA and that is the recommended way to use the app. It supports push notifications for new expenses and updates, but push delivery requires additional configuration. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+Tag expenses with custom colors for organization. The search page lets you filter by keyword and tags across all expenses. Group and friend views include an inline search bar with tag filter chips for quick filtering without leaving the page.
 
-### 3) Groups
+AI receipt scanning uses an OpenAI-compatible API to extract line items from receipt images. The scan button appears on the expense detail page for existing expenses and in the add expense flow for new ones.
 
-Groups are the primary way to use SplitPro. You can invite friends by email, or add them directly if they are already in your friends list. Group debt simplification is optional, and the group balance view provides a detailed breakdown. You can move expenses between groups and mute group notifications.
+### Groups
 
-### 3.1) Tags, search, and AI receipt scanning
+Groups are the primary way to use SplitPro. Invite friends by email or add them directly. Group debt simplification is optional. Move expenses between groups and mute group notifications.
 
-Tag expenses with custom colors for easy organization. Search expenses by keyword and filter by tags. AI receipt scanning uses an OpenAI-compatible API (e.g., self-hosted Qwen) to extract expense details from receipt images — configure `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL`, and `AI_ENABLED` in your `.env` file.
+### Statistics
 
-### 4) Data utilities
+The stats page shows total spent, average expense, breakdowns by category/person/tag with progress bars, and a bar chart for monthly spending. All sections support filtering by date range, group, payer, and tags.
 
-Splitwise import supports friends and groups (partial import). CSV import allows you to bulk add expenses from a spreadsheet with column mapping and downloadable templates. You can export data from the balances view and account settings.
+### Data utilities
 
-### 5) Translations
+Splitwise import supports friends and groups (partial import). CSV import allows bulk adding expenses from a spreadsheet with column mapping and downloadable templates. Export data from the balances view and account settings.
+
+### Translations
 
 Translations are managed in Weblate. When a language reaches 100%, it is enabled in the next update.
 
-### 6) Authentication
+### Authentication
 
 SplitPro uses NextAuth. At least one provider must be configured.
 
@@ -81,111 +116,85 @@ SplitPro uses NextAuth. At least one provider must be configured.
 
 Username/password login is not supported. You can lock down an instance by disabling signups and invites. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md) and [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for details.
 
-### 7) Currency conversions
+### Currency conversions
 
-SplitPro can display balances in a single currency, convert expense amounts, and convert group balances. Provider availability and rate limits depend on the configured rate provider. See [docs/CURRENCY_CONVERSIONS.md](docs/CURRENCY_CONVERSIONS.md).
+SplitPro can display balances in a single currency, convert expense amounts, and convert group balances. See [docs/CURRENCY_CONVERSIONS.md](docs/CURRENCY_CONVERSIONS.md).
 
-### 8) Recurring transactions
+### Recurring transactions
 
 Recurring expenses require a PostgreSQL database with the `pg_cron` extension. We publish a prebuilt Postgres image with `pg_cron`; example usage is in [docker/prod/compose.yml](docker/prod/compose.yml). If you use another database, you must enable the extension and adjust configuration. A non-superuser database role is supported when `pg_cron` is preinstalled; see [docker/README.md](docker/README.md). See [docs/RECURRING_TRANSACTIONS.md](docs/RECURRING_TRANSACTIONS.md).
 
-### 9) Bank transaction integration
+### Bank transaction integration
 
-Bank integration allows you to load transactions from providers like Plaid and convert them into expenses. This feature was provided by @alexanderwassbjer, who is currently maintaining related issues. See [docs/BANK_TRANSACTIONS.md](docs/BANK_TRANSACTIONS.md).
+Load transactions from providers like Plaid and convert them into expenses. See [docs/BANK_TRANSACTIONS.md](docs/BANK_TRANSACTIONS.md).
 
 ## Limitations and notes
 
-- SplitPro computes balances from expenses on the fly using database views. Expenses are the source of truth, which keeps balances consistent and trustworthy. For self hosted deployments the efficiency of database aggregations is entirely sufficient, but please do report any performance issues.
+- Balances are computed on the fly from expenses using database views. Expenses are the source of truth.
 - Recurring transactions require `pg_cron`, which does not support cron ranges or lists.
-- Currency conversion accuracy and coverage depend on the selected provider.
+- Currency conversion accuracy depends on the selected provider.
 - Receipts are stored on local disk; make sure your uploads volume is persistent.
+- AI receipt scanning requires an external API. No data is sent anywhere except your configured endpoint.
 
-## Supporting docs
+## Docker images
 
-- [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
-- [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)
-- [docs/MIGRATING_FROM_V1.md](docs/MIGRATING_FROM_V1.md)
-- [docs/CURRENCY_CONVERSIONS.md](docs/CURRENCY_CONVERSIONS.md)
-- [docs/RECURRING_TRANSACTIONS.md](docs/RECURRING_TRANSACTIONS.md)
-- [docs/BANK_TRANSACTIONS.md](docs/BANK_TRANSACTIONS.md)
-- [docker/README.md](docker/README.md)
+| Image                      | Architecture |
+| -------------------------- | ------------ |
+| `bpjobin/split-pro:latest` | linux/amd64  |
 
-## Versions
+Upstream images are also available:
 
-SplitPro is for self hosting. To get the most recent features, build an image from source. Stabilized changes (GitHub releases) are available as Docker images on DockerHub and GHCR. The old community instance at https://splitpro.app is no longer maintained and is stuck at version `1.3.4`.
-
-## Why
-
-Splitwise is one of the best apps to add expenses and bills.
-
-We understand that every app needs to make money, after all, lots of effort has been put into Splitwise. The main problem is how they implemented this.
-
-Monetising on pro features or ads is fine, but asking money for adding expenses (core feature) is frustrating.
-
-We were searching for other open-source alternatives (Let's be honest, any closed-source product might do the same and we don't have any reason to believe otherwise).
-
-We managed to find a good app [spliit.app](https://spliit.app/) by [Sebastien Castiel](https://scastiel.dev/) but it's not a complete replacement and didn't suit my workflow sadly. Check it out to see if it fits you.
-
-## Translations
-
-The app translations are managed using [a Weblate project](https://hosted.weblate.org/projects/splitpro/).
-You can easily add missing translations, fix issues you find and a new language! Just be aware that a new language
-also needs to be added in the code and open an issue for that once you finish translating the files.
-Here is the current state of translation:
-
-<a href="https://hosted.weblate.org/engage/splitpro/">
-<img src="https://hosted.weblate.org/widget/splitpro/multi-auto.svg" alt="Translation status" />
-</a>
-
-## FAQ
-
-#### How numerically stable is the internal logic?
-
-All numbers are stored in the DB as `BigInt` data, with no floats what so ever, safeguarding your expenses from rounding errors or lack of precision. This holds true for currencies with large nominal values that might outgrow the safe range of JS number type.
-
-#### How are leftover pennies handled?
-
-In case of an expense that cannot be split evenly, leftover amounts are distributed deterministically across participants, based on amount and date.
-
-#### Currency rate providers
-
-See [docs/CURRENCY_CONVERSIONS.md](docs/CURRENCY_CONVERSIONS.md) for provider details and limits.
+- https://hub.docker.com/r/ossapps/splitpro
+- https://ghcr.io/oss-apps/splitpro
 
 ## Getting started
 
 ### Deployment with Docker
 
-We provide Docker images on DockerHub and GHCR.
-
-- https://hub.docker.com/r/ossapps/splitpro
-- https://ghcr.io/oss-apps/splitpro
-
-For setup instructions, see [docker/README.md](docker/README.md). For environment variables, see [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
+See [docker/README.md](docker/README.md) for setup instructions and [docs/CONFIGURATION.md](docs/CONFIGURATION.md) for environment variables.
 
 ### Deployment as Proxmox LXC
 
-Thanks to @johanngrobe there is now also a Proxmox Community Script available [here](https://community-scripts.org/scripts/split-pro).
+Thanks to @johanngrobe there is a Proxmox Community Script available [here](https://community-scripts.org/scripts/split-pro).
 
 ### Development and contributing
 
 See the [CONTRIBUTING.md](CONTRIBUTING.md) document.
 
-## Sponsors
+## Supporting docs
 
-We are grateful for the support of our sponsors.
+- [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
+- [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)
+- [docs/CURRENCY_CONVERSIONS.md](docs/CURRENCY_CONVERSIONS.md)
+- [docs/RECURRING_TRANSACTIONS.md](docs/RECURRING_TRANSACTIONS.md)
+- [docs/BANK_TRANSACTIONS.md](docs/BANK_TRANSACTIONS.md)
+- [docker/README.md](docker/README.md)
 
-### Our Sponsors
+## FAQ
 
-<a href="https://hekuta.net/en" target="_blank">
-  <img src="https://avatars.githubusercontent.com/u/70084358?v=4" alt="hekuta" style="width:60px;height:60px;">
+#### How numerically stable is the internal logic?
+
+All numbers are stored in the DB as `BigInt`, with no floats, safeguarding your expenses from rounding errors. This holds for currencies with large nominal values.
+
+#### How are leftover pennies handled?
+
+Leftover amounts are distributed deterministically across participants, based on amount and date.
+
+#### Does this fork stay in sync with upstream?
+
+This fork is maintained independently. Upstream changes may be pulled in periodically, but the features listed above are specific to this fork.
+
+## Why
+
+Splitwise charges for adding expenses — a core feature. This fork (and the upstream it's based on) exists to provide a fully self-hosted, open source alternative. This enhanced version adds the workflow features (line items, tags, search, AI scanning) that make it a practical daily replacement.
+
+## Translations
+
+Translations are managed using [a Weblate project](https://hosted.weblate.org/projects/splitpro/).
+
+<a href="https://hosted.weblate.org/engage/splitpro/">
+<img src="https://hosted.weblate.org/widget/splitpro/multi-auto.svg" alt="Translation status" />
 </a>
-<a href="https://github.com/igorrrpawlowski"><img src="https:&#x2F;&#x2F;github.com&#x2F;igorrrpawlowski.png" width="60px" alt="User avatar: igorrrpawlowski" /></a>
-<a href="https://github.com/probeonstimpack"><img src="https:&#x2F;&#x2F;github.com&#x2F;probeonstimpack.png" width="60px" alt="User avatar: Marcel Szmeterowicz" /></a>
-<a href="https://github.com/mexicanhatman"><img src="https://avatars.githubusercontent.com/u/78694887?v=4" width="60px" alt="User avatar: mexicanhatman" /></a>
-<a href="https://github.com/felixdz"><img src="https://avatars.githubusercontent.com/u/11851415?v=4" width="60px" alt="User avatar: FelixDz" /></a>
-<a href="https://github.com/pchampio"><img src="https://avatars.githubusercontent.com/u/7476655?v=4" width="60px" alt="User avatar: pchampio" /></a>
-<a href="https://github.com/j4nsen"><img src="https://avatars.githubusercontent.com/u/3029093?v=4" width="60px" alt="User avatar: J4nsen" /></a>
-<a href="https://github.com/nachogrxdev"><img src="https://avatars.githubusercontent.com/u/36232789?v=4" width="60px" alt="User avatar: nachogrxdev" /></a>
 
 ## Star History
 
