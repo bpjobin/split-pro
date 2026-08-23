@@ -98,8 +98,7 @@
     "reconnect": "Reconnect",
     "connect": "Connect",
     "save_and_add_another": "Save & add another",
-    "bulk_add": "Bulk add",
-    "import_csv": "Import from CSV"
+    "bulk_add": "Bulk add"
   },
   "actors": {
     "all": "All",
@@ -324,7 +323,9 @@
       "add_row": "Add row",
       "row_placeholder": "Enter description",
       "submit_all": "Add all expenses",
-      "add_row_required": "Add at least one expense with a description and amount"
+      "add_row_required": "Add at least one expense with a description and amount",
+      "tab_manual_rows": "Manual rows",
+      "tab_import_csv": "Import CSV"
     },
     "csv_import": {
       "title": "Import from CSV",

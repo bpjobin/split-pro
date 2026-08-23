@@ -1,11 +1,4 @@
-import {
-  FileSpreadsheet,
-  HeartHandshakeIcon,
-  Landmark,
-  ListPlus,
-  RefreshCcwDot,
-  X,
-} from 'lucide-react';
+import { HeartHandshakeIcon, Landmark, ListPlus, RefreshCcwDot, X } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -22,8 +15,7 @@ import { cn } from '~/lib/utils';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import AddBankTransactions from './AddBankTransactions';
-import BulkAddExpense from './BulkAddExpense';
-import CsvImport from './CsvImport';
+import BulkAddPanel from './BulkAddPanel';
 import { CategoryPicker } from './CategoryPicker';
 import { CurrencyPicker } from './CurrencyPicker';
 import { DateSelector } from './DateSelector';
@@ -568,7 +560,7 @@ export const AddOrEditExpensePage: React.FC<{
             <SponsorUs />
             <div className="flex gap-2">
               {!expenseId && (
-                <BulkAddExpense>
+                <BulkAddPanel>
                   <Button
                     variant="ghost"
                     className="hover:text-foreground/80 items-center justify-between px-2"
@@ -576,7 +568,7 @@ export const AddOrEditExpensePage: React.FC<{
                   >
                     <ListPlus className="h-6 w-6" />
                   </Button>
-                </BulkAddExpense>
+                </BulkAddPanel>
               )}
               <AddBankTransactions bankConnectionEnabled={bankConnectionEnabled}>
                 <Button
@@ -588,15 +580,6 @@ export const AddOrEditExpensePage: React.FC<{
                   />
                 </Button>
               </AddBankTransactions>
-              <CsvImport>
-                <Button
-                  variant="ghost"
-                  className="hover:text-foreground/80 items-center justify-between px-2"
-                  title={t('actions.import_csv')}
-                >
-                  <FileSpreadsheet className="h-6 w-6" />
-                </Button>
-              </CsvImport>
               <Button
                 variant="ghost"
                 className={cn('px-2', transactionId ? 'text-red-500' : 'invisible')}
