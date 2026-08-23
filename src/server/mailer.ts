@@ -42,7 +42,11 @@ export async function sendSignUpEmail(email: string, url: string, token: string)
 
   if ('development' === env.NODE_ENV) {
     console.log('Sign in link : ', email, url, token);
-    return true;
+    // Without an SMTP server configured, keep the log-only dev behavior
+    if (!mailServerConfig.host) {
+      return true;
+    }
+    // Otherwise fall through and send via the configured server (e.g. mailpit)
   }
 
   const subject = 'Sign in to SplitPro';

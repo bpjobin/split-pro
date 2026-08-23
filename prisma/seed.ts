@@ -13,6 +13,9 @@ async function createUsers() {
     data: dummyData.users,
   });
 
+  // createMany with explicit ids does not advance the autoincrement sequence — resync it
+  await prisma.$executeRawUnsafe(`SELECT setval('"User_id_seq"', (SELECT max(id) FROM "User"))`);
+
   console.log('Finished creating users');
 
   return prisma.user.findMany();
@@ -33,6 +36,9 @@ async function createGroups() {
       }),
     ),
   );
+
+  // create with explicit ids does not advance the autoincrement sequence — resync it
+  await prisma.$executeRawUnsafe(`SELECT setval('"Group_id_seq"', (SELECT max(id) FROM "Group"))`);
 
   console.log('Finished creating groups');
 
