@@ -68,6 +68,7 @@ model User {
   sessions             Session[]
   hiddenFriendIds      Int[]                @default([])
   mutedExpenses        Expense[]            @relation("MutedByUser")
+  settledExpenses      Expense[]            @relation("SettledByUser")
 
   @@schema("public")
 }
@@ -190,11 +191,14 @@ model Expense {
   note                String?
   mutedAt             DateTime?
   mutedBy             Int?
+  settledAt           DateTime?
+  settledBy           Int?
   id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   conversionToId      String?              @unique @db.Uuid
   addedByUser         User                 @relation("AddedByUser", fields: [addedBy], references: [id], onDelete: Cascade)
   deletedByUser       User?                @relation("DeletedByUser", fields: [deletedBy], references: [id], onDelete: Cascade)
   mutedByUser         User?                @relation("MutedByUser", fields: [mutedBy], references: [id], onDelete: Cascade)
+  settledByUser       User?                @relation("SettledByUser", fields: [settledBy], references: [id], onDelete: SetNull)
   group               Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
   conversionTo        Expense?             @relation("CurrencyConversion", fields: [conversionToId], references: [id], onDelete: Cascade)
   conversionFrom      Expense?             @relation("CurrencyConversion")

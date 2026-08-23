@@ -165,7 +165,8 @@
     "invalid_cron_expression": "Invalid cron expression",
     "currency_conversion_failed": "Failed to convert currencies",
     "recurrence_delete_failed": "Failed to delete recurrence",
-    "recurrence_update_failed": "Failed to update recurrence"
+    "recurrence_update_failed": "Failed to update recurrence",
+    "settling_up": "Error while settling up"
   },
   "items": {
     "add_item": "Add item",
@@ -326,6 +327,11 @@
       "add_row_required": "Add at least one expense with a description and amount",
       "tab_manual_rows": "Manual rows",
       "tab_import_csv": "Import CSV"
+    },
+    "settle_up": {
+      "success": "Expense settled up successfully",
+      "you_pay": "You pay",
+      "you_receive": "You receive"
     },
     "csv_import": {
       "title": "Import from CSV",
@@ -543,6 +549,7 @@
     "settle_up_name": "Settle up",
     "settled_up": "Settled up",
     "settlement": "Settlement",
+    "settle_up": "Settle up",
     "share_text": "Check out SplitPro. It's an open source free alternative for Splitwise",
     "show_all_currencies": "Show all currencies",
     "today": "Today",

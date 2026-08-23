@@ -26,6 +26,8 @@ export type CreateExpense = Omit<
   | 'note'
   | 'mutedAt'
   | 'mutedBy'
+  | 'settledAt'
+  | 'settledBy'
 > & {
   expenseDate?: Date;
   fileKey?: string;

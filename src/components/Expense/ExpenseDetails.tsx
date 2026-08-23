@@ -8,6 +8,7 @@ import {
   Eye,
   EyeOff,
   FolderInput,
+  HandshakeIcon,
   Landmark,
   Merge,
   PencilIcon,
@@ -156,6 +157,9 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
               </Link>
             ) : null}
             <MoveExpenseToGroup expense={expense} />
+            {expense.splitType !== SplitType.SETTLEMENT && !expense.settledAt && (
+              <SettleUpExpense expense={expense} currentUserId={user.id} />
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -525,6 +529,127 @@ export const EditSettlement: React.FC<{ expense: ExpenseDetailsOutput }> = ({ ex
           onSelect={setExpenseDate}
           popoverPortalled={false}
         />
+      </div>
+    </AppDrawer>
+  );
+};
+
+export const SettleUpExpense: React.FC<{
+  expense: ExpenseDetailsOutput;
+  currentUserId: number;
+}> = ({ expense, currentUserId }) => {
+  const { displayName, t, getCurrencyHelpersCached } = useTranslationWithUtils();
+  const apiUtils = api.useUtils();
+
+  const settleUpMutation = api.expense.settleUpExpense.useMutation();
+
+  const currentUserParticipant = expense.expenseParticipants.find(
+    (p) => p.userId === currentUserId,
+  );
+  const isPayer = expense.paidBy === currentUserId;
+  const currentUserAmount = currentUserParticipant?.amount ?? 0n;
+
+  // Determine who is the counterparty and the settle amount
+  let counterparty: ExpenseDetailsOutput['paidByUser'] | null = null;
+  let settleAmount = 0n;
+  let isCurrentUserPaying = false;
+
+  if (isPayer) {
+    // Current user is the payer (creditor) - find a debtor
+    const debtor = expense.expenseParticipants.find(
+      (p) => p.userId !== expense.paidBy && p.amount < 0n,
+    );
+    if (debtor) {
+      counterparty = debtor.user;
+      settleAmount = BigMath.abs(debtor.amount);
+      isCurrentUserPaying = false; // Debtor pays, current user receives
+    }
+  } else if (currentUserAmount < 0n) {
+    // Current user is a debtor - they pay the payer
+    counterparty = expense.paidByUser;
+    settleAmount = BigMath.abs(currentUserAmount);
+    isCurrentUserPaying = true; // Current user pays
+  } else if (currentUserAmount > 0n) {
+    // Current user is a creditor (not payer) - find a debtor
+    const debtor = expense.expenseParticipants.find(
+      (p) => p.userId !== expense.paidBy && p.amount < 0n,
+    );
+    if (debtor) {
+      counterparty = debtor.user;
+      settleAmount = BigMath.abs(currentUserAmount);
+      isCurrentUserPaying = false; // Debtor pays, current user receives
+    }
+  }
+
+  const { toUIString } = getCurrencyHelpersCached(expense.currency);
+
+  const handleSettleUp = useCallback(async () => {
+    if (!counterparty || settleAmount === 0n) {
+      return;
+    }
+
+    try {
+      await settleUpMutation.mutateAsync({ expenseId: expense.id });
+      await apiUtils.expense.invalidate();
+      await apiUtils.group.invalidate();
+      toast.success(t('expense_details.settle_up.success'));
+    } catch (error) {
+      console.error(error);
+      toast.error(error instanceof Error ? error.message : t('errors.settling_up'));
+    }
+  }, [expense.id, settleUpMutation, apiUtils, counterparty, settleAmount, t]);
+
+  if (!counterparty || settleAmount === 0n) {
+    return null;
+  }
+
+  return (
+    <AppDrawer
+      trigger={
+        <Button variant="ghost" title={t('actions.settle_up')}>
+          <HandshakeIcon className="mr-1 h-4 w-4" />
+        </Button>
+      }
+      leftAction={t('actions.back')}
+      title={t('ui.settle_up')}
+      actionTitle={t('actions.settle_up')}
+      actionOnClick={handleSettleUp}
+      actionDisabled={settleUpMutation.isPending}
+      className="h-[70vh]"
+      shouldCloseOnAction
+    >
+      <div className="mt-10 flex flex-col items-center gap-6">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-5">
+            {isCurrentUserPaying ? (
+              <>
+                <EntityAvatar entity={{ name: t('actors.you'), email: '', image: null }} />
+                <ArrowRightIcon className="h-6 w-6 text-gray-600" />
+                <EntityAvatar entity={counterparty} />
+              </>
+            ) : (
+              <>
+                <EntityAvatar entity={counterparty} />
+                <ArrowRightIcon className="h-6 w-6 text-gray-600" />
+                <EntityAvatar entity={{ name: t('actors.you'), email: '', image: null }} />
+              </>
+            )}
+          </div>
+          <p className="mt-2 text-center text-sm text-gray-400">
+            {isCurrentUserPaying
+              ? `${t('actors.you')} ${t('ui.expense.user.pay')} ${displayName(counterparty)}`
+              : `${displayName(counterparty)} ${t('ui.expense.user.pay')} ${t('actors.you')}`}
+          </p>
+          {expense.group ? (
+            <p className="mt-1 text-center text-xs text-gray-500">{expense.group.name}</p>
+          ) : null}
+        </div>
+        <div className="text-center text-3xl font-semibold">{toUIString(settleAmount)}</div>
+        <p className="text-center text-sm text-gray-500">
+          {isCurrentUserPaying
+            ? t('expense_details.settle_up.you_pay')
+            : t('expense_details.settle_up.you_receive')}
+        </p>
       </div>
     </AppDrawer>
   );

@@ -650,6 +650,131 @@ export const expenseRouter = createTRPCRouter({
       return updated;
     }),
 
+  settleUpExpense: protectedProcedure
+    .input(z.object({ expenseId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const currentUserId = ctx.session.user.id;
+
+      // Get the expense with participants
+      const expense = await db.expense.findUnique({
+        where: { id: input.expenseId },
+        include: {
+          expenseParticipants: true,
+          paidByUser: true,
+        },
+      });
+
+      if (!expense) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Expense not found' });
+      }
+
+      // Don't allow settling already settled expenses
+      if (expense.settledAt) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Expense already settled' });
+      }
+
+      // Don't allow settling settlement expenses
+      if (expense.splitType === SplitType.SETTLEMENT) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot settle a settlement expense' });
+      }
+
+      // Check if current user is a participant
+      const currentUserParticipant = expense.expenseParticipants.find(
+        (p) => p.userId === currentUserId,
+      );
+
+      if (!currentUserParticipant && expense.paidBy !== currentUserId) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You are not a participant of this expense',
+        });
+      }
+
+      // Find the counterparty for the settlement
+      // If current user is the payer (creditor), find a debtor
+      // If current user is a debtor, the counterparty is the payer
+      // If current user is a creditor (positive amount but not payer), find a debtor
+
+      let settlementPaidBy: number;
+      let settlementParticipants: { userId: number; amount: bigint }[];
+
+      const payerId = expense.paidBy;
+      const currentUserAmount = currentUserParticipant?.amount ?? 0n;
+
+      if (currentUserId === payerId) {
+        // Current user is the payer (creditor) - find a debtor to settle with
+        const debtor = expense.expenseParticipants.find(
+          (p) => p.userId !== payerId && p.amount < 0n,
+        );
+
+        if (!debtor) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'No debtor found to settle with' });
+        }
+
+        // Debtor pays the payer
+        settlementPaidBy = debtor.userId;
+        const settleAmount = BigMath.abs(debtor.amount);
+        settlementParticipants = [
+          { userId: debtor.userId, amount: settleAmount }, // Debtor pays (positive)
+          { userId: payerId, amount: -settleAmount }, // Payer receives (negative)
+        ];
+      } else if (currentUserAmount < 0n) {
+        // Current user is a debtor - they pay the payer
+        settlementPaidBy = currentUserId;
+        const settleAmount = BigMath.abs(currentUserAmount);
+        settlementParticipants = [
+          { userId: currentUserId, amount: settleAmount }, // Current user pays (positive)
+          { userId: payerId, amount: -settleAmount }, // Payer receives (negative)
+        ];
+      } else if (currentUserAmount > 0n) {
+        // Current user is a creditor (not payer) - find a debtor to settle with
+        const debtor = expense.expenseParticipants.find(
+          (p) => p.userId !== payerId && p.amount < 0n,
+        );
+
+        if (!debtor) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'No debtor found to settle with' });
+        }
+
+        // Debtor pays the current user (creditor)
+        settlementPaidBy = debtor.userId;
+        const settleAmount = BigMath.abs(currentUserAmount);
+        settlementParticipants = [
+          { userId: debtor.userId, amount: settleAmount }, // Debtor pays (positive)
+          { userId: currentUserId, amount: -settleAmount }, // Current user receives (negative)
+        ];
+      } else {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nothing to settle' });
+      }
+
+      // Create the settlement expense
+      const settlementExpense = await createExpense(
+        {
+          name: `Settlement: ${expense.name}`,
+          currency: expense.currency,
+          amount: settlementParticipants[0]!.amount, // The positive amount (what debtor pays)
+          splitType: SplitType.SETTLEMENT,
+          participants: settlementParticipants,
+          paidBy: settlementPaidBy,
+          category: DEFAULT_CATEGORY,
+          groupId: expense.groupId,
+          expenseDate: new Date(),
+        },
+        currentUserId,
+      );
+
+      // Mark the original expense as settled
+      await db.expense.update({
+        where: { id: input.expenseId },
+        data: {
+          settledAt: new Date(),
+          settledBy: currentUserId,
+        },
+      });
+
+      return { settlementExpense, settledExpenseId: input.expenseId };
+    }),
+
   getCurrencyRate: protectedProcedure.input(getCurrencyRateSchema).query(async ({ input }) => {
     const { from, to, date } = input;
 
@@ -804,16 +929,16 @@ export const expenseRouter = createTRPCRouter({
         totalExpenses,
         averageExpense: totalExpenses > 0 ? totalSpent / BigInt(totalExpenses) : 0n,
         byCategory: Object.entries(byCategory)
-          .map(([category, data]) => Object.assign({ category }, data))
+          .map(([category, data]) => ({ category, ...data }))
           .sort((a, b) => (a.total > b.total ? -1 : 1)),
         byPerson: Object.entries(byPerson)
-          .map(([id, data]) => Object.assign({ userId: Number(id) }, data))
+          .map(([id, data]) => ({ userId: Number(id), ...data }))
           .sort((a, b) => (a.total > b.total ? -1 : 1)),
         byMonth: Object.entries(byMonth)
-          .map(([month, data]) => Object.assign({ month }, data))
+          .map(([month, data]) => ({ month, ...data }))
           .sort((a, b) => a.month.localeCompare(b.month)),
         byTag: Object.entries(byTag)
-          .map(([id, data]) => Object.assign({ tagId: id }, data))
+          .map(([id, data]) => ({ tagId: id, ...data }))
           .sort((a, b) => (a.total > b.total ? -1 : 1)),
       };
     }),
