@@ -1,5 +1,5 @@
 import { SplitType } from '@prisma/client';
-import { ChevronLeftIcon, PencilIcon } from 'lucide-react';
+import { ChevronLeftIcon, HandshakeIcon, MoreHorizontal, PencilIcon } from 'lucide-react';
 import { type GetServerSideProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import Head from 'next/head';
@@ -11,10 +11,13 @@ import { DeleteExpense } from '~/components/Expense/DeleteExpense';
 import ExpenseDetails, {
   EditCurrencyConversion,
   EditSettlement,
+  MoveExpenseToGroup,
+  SettleUpExpense,
 } from '~/components/Expense/ExpenseDetails';
 import MainLayout from '~/components/Layout/MainLayout';
 import { SimpleConfirmationDialog } from '~/components/SimpleConfirmationDialog';
 import { Button } from '~/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import { extractTemplateExpenseId } from '~/lib/cron';
 import { type NextPageWithUser } from '~/types';
 import { api } from '~/utils/api';
@@ -81,6 +84,9 @@ const ExpensesPage: NextPageWithUser = ({ user }) => {
     return <Link href={`/add?expenseId=${expenseId}`}>{editButton}</Link>;
   };
 
+  // Narrow type for expense data
+  const expense = expenseQuery.data;
+
   return (
     <>
       <Head>
@@ -97,16 +103,49 @@ const ExpensesPage: NextPageWithUser = ({ user }) => {
           </div>
         }
         actions={
-          <div className="flex items-center gap-1">
-            <DeleteExpense expenseId={expenseId} recurrence={recurrence} />
-            {expenseQuery.data?.splitType === SplitType.CURRENCY_CONVERSION ? (
-              <EditCurrencyConversion expense={expenseQuery.data} />
-            ) : expenseQuery.data?.splitType === SplitType.SETTLEMENT ? (
-              <EditSettlement expense={expenseQuery.data} />
-            ) : (
-              renderEditButton()
-            )}
-          </div>
+          expense?.deletedBy ? null : (
+            <div className="flex items-center gap-2">
+              {/* Settle up */}
+              {expense?.splitType !== SplitType.SETTLEMENT && !expense?.settledAt && expense && (
+                <SettleUpExpense expense={expense} currentUserId={user.id} />
+              )}
+
+              {/* Edit button */}
+              {expense?.splitType === SplitType.CURRENCY_CONVERSION ? (
+                <EditCurrencyConversion expense={expense} />
+              ) : expense?.splitType === SplitType.SETTLEMENT ? (
+                <EditSettlement expense={expense} />
+              ) : (
+                <Link href={`/add?expenseId=${expenseId}`}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title={t('actions.edit')}>
+                    <PencilIcon className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+
+              {/* Secondary actions dropdown */}
+              {expense?.group && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title={t('actions.more')}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={8}>
+                    <div className="flex flex-col gap-1">
+                      <MoveExpenseToGroup expense={expense} />
+                      <DeleteExpense expenseId={expenseId} recurrence={recurrence} />
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          )
         }
         loading={expenseQuery.isPending}
       >

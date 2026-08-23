@@ -11,9 +11,7 @@ import {
   HandshakeIcon,
   Landmark,
   Merge,
-  MoreHorizontal,
   PencilIcon,
-  Trash2,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -39,9 +37,7 @@ import { CategoryIcon } from '../ui/categoryIcons';
 import { CurrencyInput } from '../ui/currency-input';
 import { AppDrawer } from '../ui/drawer';
 import { Separator } from '../ui/separator';
-import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import { Receipt } from './Receipt';
-import { DeleteExpense } from './DeleteExpense';
 import { DateSelector } from '../AddExpense/DateSelector';
 import { ScanReceiptButton } from '../AddExpense/ScanReceiptButton';
 import { TagPicker } from '../TagPicker';
@@ -181,47 +177,6 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
           ) : null}
         </div>
       </div>
-
-      {/* Toolbar with actions */}
-      <div className="mt-4 flex items-center gap-2">
-        {/* Settle up - primary action */}
-        {showSettleUp && <SettleUpExpense expense={expense} currentUserId={user.id} />}
-
-        {/* Edit button */}
-        {!expense.deletedBy &&
-          expense.splitType !== SplitType.CURRENCY_CONVERSION &&
-          expense.splitType !== SplitType.SETTLEMENT && (
-            <Link href={`/add?expenseId=${expense.id}`}>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title={t('actions.edit')}>
-                <PencilIcon className="h-4 w-4" />
-              </Button>
-            </Link>
-          )}
-        {expense.splitType === SplitType.CURRENCY_CONVERSION && !expense.deletedBy && (
-          <EditCurrencyConversion expense={expense} />
-        )}
-        {expense.splitType === SplitType.SETTLEMENT && !expense.deletedBy && (
-          <EditSettlement expense={expense} />
-        )}
-
-        {/* Secondary actions dropdown */}
-        {(expense.group || isCurrencyConversion) && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8" title={t('actions.more')}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" sideOffset={8}>
-              <div className="flex flex-col gap-1">
-                {!isCurrencyConversion && expense.group && <MoveExpenseToGroup expense={expense} />}
-                <DeleteExpense expenseId={expense.id} recurrence={expense.recurrence ?? null} />
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
-
       <Separator />
       <div className="mt-10 flex items-center gap-2">
         <Link
