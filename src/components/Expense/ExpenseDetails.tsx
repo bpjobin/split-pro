@@ -11,6 +11,7 @@ import {
   HandshakeIcon,
   Landmark,
   Merge,
+  MoreHorizontal,
   PencilIcon,
   Users,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ import { CategoryIcon } from '../ui/categoryIcons';
 import { CurrencyInput } from '../ui/currency-input';
 import { AppDrawer } from '../ui/drawer';
 import { Separator } from '../ui/separator';
+import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover';
 import { Receipt } from './Receipt';
 import { DateSelector } from '../AddExpense/DateSelector';
 import { ScanReceiptButton } from '../AddExpense/ScanReceiptButton';
@@ -72,17 +74,23 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
 
   const { toUIString } = getCurrencyHelpersCached(expense.currency);
 
+  // Check if we should show settle up action
+  const showSettleUp = expense.splitType !== SplitType.SETTLEMENT && !expense.settledAt;
+  const isCurrencyConversion = expense.splitType === SplitType.CURRENCY_CONVERSION;
+
   return (
     <>
       <div className="mb-4 flex items-start justify-between gap-2">
-        <div className="flex items-start gap-4">
-          <div className="rounded-lg border p-2 text-xl">
+        <div className="flex min-w-0 flex-1 items-start gap-4">
+          <div className="flex-shrink-0 rounded-lg border p-2 text-xl">
             <CategoryIcon category={expense.category} className="text-gray-400" size={24} />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             <div className="flex w-full items-center gap-2">
-              <p>{expense.name}</p>
-              {expense.transactionId && <Landmark className="text-positive h-4 w-4" />}
+              <p className="truncate">{expense.name}</p>
+              {expense.transactionId && (
+                <Landmark className="text-positive h-4 w-4 flex-shrink-0" />
+              )}
             </div>
             <p className="text-2xl font-semibold">{toUIString(expense.amount)}</p>
             {expense.note ? (
@@ -156,13 +164,9 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
                 </Button>
               </Link>
             ) : null}
-            <MoveExpenseToGroup expense={expense} />
-            {expense.splitType !== SplitType.SETTLEMENT && !expense.settledAt && (
-              <SettleUpExpense expense={expense} currentUserId={user.id} />
-            )}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-shrink-0 flex-col items-end gap-2">
           {expense.fileKey ? <Receipt fileKey={expense.fileKey} /> : null}
           {expense.fileKey ? (
             <ScanReceiptButton
@@ -173,6 +177,28 @@ const ExpenseDetails: React.FC<ExpenseDetailsProps> = ({ user, expense }) => {
               }}
             />
           ) : null}
+          {/* Primary action: Settle up */}
+          {showSettleUp && <SettleUpExpense expense={expense} currentUserId={user.id} />}
+          {/* Secondary actions dropdown */}
+          {(expense.group || isCurrencyConversion) && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" sideOffset={8}>
+                <div className="flex flex-col gap-1">
+                  {!isCurrencyConversion && expense.group && (
+                    <MoveExpenseToGroup expense={expense} />
+                  )}
+                  {expense.splitType === SplitType.CURRENCY_CONVERSION && (
+                    <EditCurrencyConversion expense={expense} />
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
       </div>
       <Separator />
@@ -320,35 +346,42 @@ export const MoveExpenseToGroup: React.FC<{ expense: ExpenseDetailsOutput }> = (
   }
 
   return (
-    <AppDrawer
-      open={open}
-      onOpenChange={setOpen}
-      title={t('expense_details.move_expense.title')}
-      trigger={
-        <Button variant="outline" size="sm" className="mt-2 gap-2">
-          <FolderInput className="size-4" />
-          {t('actions.move_to_group')}
-        </Button>
-      }
-    >
-      <div className="flex flex-col">
-        {otherGroups.map((g) => (
-          <button
-            key={g.id}
-            className="flex w-full items-center gap-2 border-b border-gray-900 py-3"
-            onClick={() => onGroupSelect(g.id)}
-          >
-            <EntityAvatar entity={g} size={30} />
-            <span className="truncate">{g.name}</span>
-          </button>
-        ))}
-        {0 === otherGroups.length ? (
-          <p className="py-4 text-center text-sm text-gray-500">
-            {t('expense_details.move_expense.no_groups')}
-          </p>
-        ) : null}
-      </div>
-    </AppDrawer>
+    <>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+        onClick={() => setOpen(true)}
+      >
+        <FolderInput className="size-4 text-gray-500" />
+        <span>{t('actions.move_to_group')}</span>
+      </button>
+      <AppDrawer
+        open={open}
+        onOpenChange={setOpen}
+        title={t('expense_details.move_expense.title')}
+        className="h-[70vh]"
+        trigger={<span />}
+        disableTrigger
+      >
+        <div className="flex flex-col">
+          {otherGroups.map((g) => (
+            <button
+              key={g.id}
+              className="flex w-full items-center gap-2 border-b border-gray-900 py-3"
+              onClick={() => onGroupSelect(g.id)}
+            >
+              <EntityAvatar entity={g} size={30} />
+              <span className="truncate">{g.name}</span>
+            </button>
+          ))}
+          {0 === otherGroups.length ? (
+            <p className="py-4 text-center text-sm text-gray-500">
+              {t('expense_details.move_expense.no_groups')}
+            </p>
+          ) : null}
+        </div>
+      </AppDrawer>
+    </>
   );
 };
 
@@ -357,6 +390,8 @@ export const EditCurrencyConversion: React.FC<{ expense: ExpenseDetailsOutput }>
 }) => {
   const { setCurrency } = useAddExpenseStore((s) => s.actions);
   const { t } = useTranslationWithUtils();
+
+  const [open, setOpen] = useState(false);
 
   if (!expense.conversionTo) {
     toast.error(t('errors.currency_conversion_malformed'));
@@ -392,6 +427,7 @@ export const EditCurrencyConversion: React.FC<{ expense: ExpenseDetailsOutput }>
         expenseId: expense.id,
       });
       await apiUtils.invalidate();
+      setOpen(false);
     },
     [
       addOrEditCurrencyConversionMutation,
@@ -404,16 +440,40 @@ export const EditCurrencyConversion: React.FC<{ expense: ExpenseDetailsOutput }>
   );
 
   return (
-    <CurrencyConversion
-      amount={expense.amount}
-      currency={expense.currency}
-      onSubmit={onSubmit}
-      editingRate={Math.abs(Number(expense.conversionTo?.amount) / Number(expense.amount))}
-    >
-      <Button variant="ghost" onClick={onClick}>
-        <PencilIcon className="mr-1 h-4 w-4" />
-      </Button>
-    </CurrencyConversion>
+    <>
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+        onClick={() => setOpen(true)}
+      >
+        <PencilIcon className="size-4 text-gray-500" />
+        <span>{t('actions.edit')}</span>
+      </button>
+      <AppDrawer
+        open={open}
+        onOpenChange={setOpen}
+        title={t('currency_conversion.title')}
+        leftAction={t('actions.back')}
+        actionTitle={t('actions.save')}
+        actionOnClick={() => {}}
+        actionDisabled={false}
+        className="h-[70vh]"
+        shouldCloseOnAction={false}
+        trigger={<span />}
+        disableTrigger
+      >
+        <CurrencyConversion
+          amount={expense.amount}
+          currency={expense.currency}
+          onSubmit={onSubmit}
+          editingRate={Math.abs(Number(expense.conversionTo?.amount) / Number(expense.amount))}
+        >
+          <Button variant="ghost" onClick={onClick}>
+            <PencilIcon className="mr-1 h-4 w-4" />
+          </Button>
+        </CurrencyConversion>
+      </AppDrawer>
+    </>
   );
 };
 
