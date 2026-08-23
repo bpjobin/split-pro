@@ -138,7 +138,7 @@ const ExpensesPage: NextPageWithUser = ({ user }) => {
                   <PopoverContent align="end" sideOffset={8}>
                     <div className="flex flex-col gap-1">
                       <MoveExpenseToGroup expense={expense} />
-                      <DeleteExpense expenseId={expenseId} recurrence={recurrence} />
+                      <DeleteExpense expenseId={expenseId} recurrence={recurrence} asDropdownItem />
                     </div>
                   </PopoverContent>
                 </Popover>

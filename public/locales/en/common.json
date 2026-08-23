@@ -84,6 +84,7 @@
     "copy": "Copy",
     "confirm": "Confirm",
     "create": "Create",
+    "delete": "Delete",
     "edit_expense": "Edit expense",
     "export": "Export",
     "fetch": "Fetch",

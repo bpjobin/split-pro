@@ -1,7 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { toast } from 'sonner';
 
@@ -19,11 +19,18 @@ interface DeleteExpenseProps {
       command: string;
     };
   } | null;
+  /** If true, renders as a dropdown menu item with label */
+  asDropdownItem?: boolean;
 }
 
-export const DeleteExpense: React.FC<DeleteExpenseProps> = ({ expenseId, recurrence }) => {
+export const DeleteExpense: React.FC<DeleteExpenseProps> = ({
+  expenseId,
+  recurrence,
+  asDropdownItem,
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const deleteExpenseMutation = api.expense.deleteExpense.useMutation();
 
@@ -66,6 +73,31 @@ export const DeleteExpense: React.FC<DeleteExpenseProps> = ({ expenseId, recurre
       </>
     );
   }, [isPartOfRecurrence, isTemplate, t]);
+
+  if (asDropdownItem) {
+    return (
+      <>
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+          onClick={() => setConfirmOpen(true)}
+        >
+          <Trash2 className="size-4" />
+          <span>{t('actions.delete')}</span>
+        </button>
+        <SimpleConfirmationDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          title={t('expense_details.delete_expense_details.title')}
+          description={description}
+          hasPermission
+          onConfirm={onDeleteExpense}
+          loading={deleteExpenseMutation.isPending}
+          variant="destructive"
+        />
+      </>
+    );
+  }
 
   return (
     <SimpleConfirmationDialog
