@@ -4,16 +4,16 @@ on:
   push:
     tags:
       - '*'
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to run the action on'
-        default: 'main'
-        required: true
+
+# NOTE: GitHub Actions cannot filter `on.push` by the pushing user, so a run is
+# still *created* when anyone pushes a tag. The `if:` guard on the job below
+# enforces "bpjobin only": runs triggered by anyone else are skipped (no build,
+# no publish).
 
 jobs:
   build_and_publish:
     name: Build and publish Docker image
+    if: github.actor == 'bpjobin'
     runs-on: self-hosted
     permissions:
       packages: write

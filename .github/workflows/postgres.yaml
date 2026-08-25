@@ -1,5 +1,6 @@
 name: Publish DB image
 
+# Manual trigger only; guarded so only bpjobin can run it (see job `if:` below).
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +29,7 @@ on:
 jobs:
   build_and_publish_db_images:
     name: Build and publish DB images
+    if: github.actor == 'bpjobin'
     runs-on: ${{ matrix.os }}
     permissions:
       packages: write
@@ -100,6 +102,7 @@ jobs:
 
   create_and_publish_manifest:
     name: Create and publish manifest
+    if: github.actor == 'bpjobin'
     runs-on: ubuntu-latest
     permissions:
       packages: write
