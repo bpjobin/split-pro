@@ -33,15 +33,19 @@ jobs:
         run: |
           APP_VERSION="$(git name-rev --tags --name-only $(git rev-parse HEAD) | head -n 1 | sed 's/\^0//')"
           GIT_SHA="$(git rev-parse --short HEAD)"
-          BUILD_DATE="$(date -u +%Y%m%d-%H%M%S)"
+          if [[ "$APP_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            CHANNEL=latest
+          else
+            CHANNEL=next
+          fi
 
           docker build \
             --progress=plain \
             --build-arg APP_VERSION="$APP_VERSION" \
             --build-arg GIT_SHA="$GIT_SHA" \
-            -t "bpjobin/split-pro:latest" \
+            -t "bpjobin/split-pro:$CHANNEL" \
             -t "bpjobin/split-pro:$GIT_SHA" \
-            -t "bpjobin/split-pro:build-$BUILD_DATE" \
+            -t "bpjobin/split-pro:$APP_VERSION" \
             .
 
       - name: Push the docker image to DockerHub
