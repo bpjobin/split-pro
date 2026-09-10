@@ -27,7 +27,7 @@ services:
       - database:/var/lib/postgresql/data
 
   splitpro:
-    image: ossapps/splitpro:latest
+    image: bpjobin/split-pro:latest
     container_name: splitpro
     restart: always
     ports:

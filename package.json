@@ -13,6 +13,7 @@
     "db:verify-seed-hash": "tsx src/dummies/index.ts --strict",
     "prisma:prod": "prisma migrate deploy",
     "dev": "next dev --turbopack",
+    "dev:up": "sh scripts/dev-up.sh",
     "postinstall": "prisma generate",
     "generate": "prisma generate",
     "lint": "oxlint --type-aware",

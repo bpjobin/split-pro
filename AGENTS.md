@@ -5,7 +5,7 @@
 ### Development
 
 ```bash
-pnpm dev           # Start dev server with Turbopack
+pnpm dev           # Start dev server with Turbopack (accessible on LAN at http://<IP>:3001)
 pnpm d             # Full dev setup (install, docker, migrate, dev)
 pnpm dx            # Setup dependencies (install, docker up, migrate dev)
 pnpm dx:up         # Start Docker containers
@@ -35,6 +35,46 @@ pnpm db:dev        # Run Prisma migrations (dev)
 pnpm db:seed       # Seed the database
 pnpm generate      # Generate Prisma client
 ```
+
+For typical development, the database is running via Docker Compose (started with `pnpm dx:up`). The dev server connects to it using the `DATABASE_URL` from `.env`:
+
+```
+postgresql://postgres:strong-password@localhost:5432/splitpro
+```
+
+To reset the database and re-seed from scratch:
+
+```bash
+pnpm dx:down     # Stop Docker containers
+pnpm dx:up       # Start containers fresh
+pnpm db:seed     # Seed demo data
+```
+
+Or idempotently re-apply migrations and reset data:
+
+```bash
+pnpm db:push     # Push any schema changes
+pnpm db:dev      # Create new migration session
+```
+
+### Development Database
+
+When running `pnpm dev` (or `pnpm dx`), the development database is automatically available via the Docker Compose setup. The key points:
+
+- **Database container**: `splitpro-db` (PostgreSQL 18) running on `localhost:5432`
+- **Database name**: `splitpro`
+- **Default credentials**: `postgres` / `strong-password`
+- **pg_cron extension**: Required for recurring expense jobs; auto-enabled on container start
+- **Data seeding**: Runs automatically on first start if the `User` table is empty; skip with `pnpm dev --no-seed` equivalent (or use `--no-seed` flag if supported)
+- **Worktrees**: Each worktree gets its own PostgreSQL container with unique `POSTGRES_PORT`, `POSTGRES_DB`, and `POSTGRES_CONTAINER_NAME` in the worktree `.env`
+
+To use a completely separate database for development (e.g., with different data):
+
+1. Configure a unique `.env` with different `POSTGRES_DB`, `POSTGRES_PORT`, etc.
+2. Start a dedicated container: `docker run -d --name <name> -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=strong-password -e POSTGRES_DB=<db> -p <port>:5432 ossapps/postgres:18.3-trixie postgres -c shared_preload_libraries=pg_cron -c cron.database_name=<db> -c cron.timezone=UTC`
+3. Enable pg_cron: `psql "postgresql://postgres:strong-password@localhost:<port>/<db>" -c "CREATE EXTENSION IF NOT EXISTS pg_cron;"`
+4. Run migrations and seed: `pnpm db:push && pnpm db:seed`
+5. Update `NEXTAUTH_URL` and `NEXTAUTH_URL_INTERNAL` to match the new setup
 
 ### Testing
 
