@@ -44,6 +44,9 @@ yarn-error.log*
 .env
 .env*.local
 
+# direnv cache and native development database
+/.direnv/
+
 # vercel
 .vercel
 
